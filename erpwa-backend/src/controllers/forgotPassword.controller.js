@@ -57,13 +57,13 @@ export async function forgotPassword(req, res) {
     },
   });
 
-sendMail({
-  to: email,
-  ...passwordResetOtpTemplate({
-    name: user.name,
-    otp,
-  }),
-})
+  sendMail({
+    to: email,
+    ...passwordResetOtpTemplate({
+      name: user.name,
+      otp,
+    }),
+  })
     .then(() => console.log("✅ OTP email sent"))
     .catch((err) => console.error("❌ OTP email failed:", err));
 
