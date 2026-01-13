@@ -12,7 +12,7 @@ export default function CampaignsPage() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
-  const campaigns: Array<{ id: string; name: string; type: "image" | "template"; status: "active" | "completed" | "draft" | "paused"; recipientCount: number; createdAt: string }> = [
+  const campaigns = [
     {
       id: "1",
       name: "Summer Sale 2024",
