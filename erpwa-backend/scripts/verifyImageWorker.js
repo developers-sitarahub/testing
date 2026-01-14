@@ -3,7 +3,6 @@ import prisma from "../src/prisma.js";
 async function verifyImageWorker() {
   console.log("🧪 Verifying WhatsApp Image Worker...");
 
-  // 1️⃣ Find active WhatsApp conversation
   const conversation = await prisma.conversation.findFirst({
     where: {
       channel: "whatsapp",
@@ -15,26 +14,15 @@ async function verifyImageWorker() {
     },
   });
 
-  if (!conversation) {
-    throw new Error("❌ No active WhatsApp conversation found");
-  }
+  if (!conversation) throw new Error("No active conversation");
 
-  console.log("✅ Conversation:", conversation.id);
-
-  // 2️⃣ Get one gallery image
   const image = await prisma.galleryImage.findFirst({
-    where: {
-      vendorId: conversation.vendorId,
-    },
+    where: { vendorId: conversation.vendorId },
   });
 
-  if (!image) {
-    throw new Error("❌ No gallery image found");
-  }
+  if (!image) throw new Error("No gallery image");
 
-  console.log("✅ Gallery image:", image.id);
-
-  // 3️⃣ Create queued message
+  // ✅ STEP 1: Create Message
   const message = await prisma.message.create({
     data: {
       vendorId: conversation.vendorId,
@@ -43,41 +31,39 @@ async function verifyImageWorker() {
       channel: "whatsapp",
       messageType: "image",
       status: "queued",
-
-      media: {
-        create: {
-          mediaType: "image",
-          mimeType: "image/jpeg",
-          mediaUrl: image.s3Url,
-          caption: image.title ?? "Worker verification test",
-        },
-      },
     },
   });
 
-  console.log("📨 Message queued:", message.id);
+  // ✅ STEP 2: Create Media
+  const media = await prisma.messageMedia.create({
+    data: {
+      messageId: message.id,
+      mediaType: "image",
+      mimeType: "image/jpeg",
+      mediaUrl: image.s3Url,
+      caption: image.title ?? "Worker verification test",
+    },
+  });
 
-  console.log(`
-🎯 NEXT STEPS
+  // ✅ STEP 3: Create Delivery (NOW Prisma is satisfied)
+  const delivery = await prisma.messageDelivery.create({
+    data: {
+      messageId: message.id,
+      messageMediaId: media.id,
+      conversationId: conversation.id,
+      status: "queued",
+    },
+  });
 
-1️⃣ In a NEW terminal, start the worker:
-   node src/workers/runWhatsappImageWorker.js
+  console.log("✅ Message:", message.id);
+  console.log("📦 Media:", media.id);
+  console.log("🚚 Delivery:", delivery.id);
 
-2️⃣ Watch worker logs:
-   🟢 Image worker running
-   🔒 processing
-   ✅ Sent image OR ❌ failed
-
-3️⃣ Check DB:
-   Message.status should be 'sent' or 'failed'
-`);
+  console.log("🎯 Verification complete");
 }
 
 verifyImageWorker()
-  .then(() => {
-    console.log("✅ Verification script finished");
-    process.exit(0);
-  })
+  .then(() => process.exit(0))
   .catch((err) => {
     console.error("❌ Verification failed:", err.message);
     process.exit(1);
