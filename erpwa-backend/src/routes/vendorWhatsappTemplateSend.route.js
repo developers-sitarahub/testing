@@ -78,7 +78,11 @@ router.post(
     let messagesToSend = [];
 
     // Check if we have custom messages (per-recipient variables)
-    if (customMessages && Array.isArray(customMessages) && customMessages.length > 0) {
+    if (
+      customMessages &&
+      Array.isArray(customMessages) &&
+      customMessages.length > 0
+    ) {
       messagesToSend = customMessages;
     } else {
       // Default: same variables for all recipients
@@ -93,13 +97,38 @@ router.post(
 
     /** 5️⃣ Send to recipients */
     for (const msg of messagesToSend) {
-      const { to: rawTo, bodyVariables: msgBodyVars, buttonVariables: msgButtonVars } = msg;
+      const {
+        to: rawTo,
+        bodyVariables: msgBodyVars,
+        buttonVariables: msgButtonVars,
+      } = msg;
 
       // Use message specific variables or fall back to global ones
       const currentBodyVars = msgBodyVars || bodyVariables;
       const currentButtonVars = msgButtonVars || buttonVariables;
 
       const to = String(rawTo).replace(/\D/g, ""); // Remove non-digits
+
+      /** 🛡️ ROLE-BASED CHECK */
+      if (req.user.role === "sales") {
+        const existingLead = await prisma.lead.findFirst({
+          where: { vendorId: vendor.id, phoneNumber: to },
+        });
+
+        if (
+          existingLead &&
+          existingLead.salesPersonName &&
+          existingLead.salesPersonName !== req.user.name
+        ) {
+          results.push({
+            to,
+            success: false,
+            error: "Lead is assigned to another sales person",
+          });
+          continue;
+        }
+      }
+
       try {
         const components = [];
 
@@ -141,8 +170,6 @@ router.post(
           });
         }
 
-
-
         /** 🔹 SEND TO WHATSAPP */
         const metaResp = await fetch(
           `https://graph.facebook.com/v24.0/${vendor.whatsappPhoneNumberId}/messages`,
@@ -162,7 +189,7 @@ router.post(
                 components,
               },
             }),
-          }
+          },
         );
 
         const metaData = await metaResp.json();
@@ -174,7 +201,10 @@ router.post(
         let content = language.body;
         if (currentBodyVars && currentBodyVars.length) {
           currentBodyVars.forEach((v, i) => {
-            content = content.replace(new RegExp(`\\{\\{${i + 1}\\}\\}`, "g"), String(v));
+            content = content.replace(
+              new RegExp(`\\{\\{${i + 1}\\}\\}`, "g"),
+              String(v),
+            );
           });
         }
 
@@ -186,13 +216,23 @@ router.post(
               phoneNumber: to,
             },
           },
-          update: { lastContactedAt: new Date() },
+          update: {
+            lastContactedAt: new Date(),
+            ...(req.user.role === "sales" && {
+              salesPersonName: req.user.name,
+              salesPersonId: req.user.id,
+            }), // Auto-assign if sending
+          },
           create: {
             vendorId: vendor.id,
             phoneNumber: to,
             whatsappOptIn: true,
             optInSource: "outbound_template",
             optInAt: new Date(),
+            ...(req.user.role === "sales" && {
+              salesPersonName: req.user.name,
+              salesPersonId: req.user.id,
+            }),
           },
         });
 
@@ -231,8 +271,8 @@ router.post(
               template: {
                 name: template.displayName,
                 footer: language.footerText,
-                buttons: template.buttons || []
-              }
+                buttons: template.buttons || [],
+              },
             },
           },
         });
@@ -242,7 +282,14 @@ router.post(
           await prisma.messageMedia.create({
             data: {
               messageId: message.id,
-              mediaType: media.mediaType === "IMAGE" ? "image" : media.mediaType === "VIDEO" ? "video" : media.mediaType === "DOCUMENT" ? "document" : "image",
+              mediaType:
+                media.mediaType === "IMAGE"
+                  ? "image"
+                  : media.mediaType === "VIDEO"
+                    ? "video"
+                    : media.mediaType === "DOCUMENT"
+                      ? "document"
+                      : "image",
               mimeType: media.mimeType || "image/jpeg",
               mediaUrl: media.s3Url,
             },
@@ -267,8 +314,8 @@ router.post(
             // Template specific metadata
             template: {
               footer: language.footerText,
-              buttons: template.buttons || []
-            }
+              buttons: template.buttons || [],
+            },
           });
 
           io.to(`vendor:${vendor.id}`).emit("inbox:update", {
@@ -290,7 +337,7 @@ router.post(
     }
 
     res.json({ success: true, results });
-  })
+  }),
 );
 
 export default router;

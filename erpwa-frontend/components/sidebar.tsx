@@ -1,40 +1,52 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useAuth } from "@/context/authContext"
-import { Home, MessageSquare, Send, Users, FileText, Settings, LogOut, ChevronRight, Menu, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useSidebar } from "@/context/sidebar-provider"
-import { useState, useEffect } from "react"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/authContext";
+import {
+  LayoutDashboard,
+  MessageSquare,
+  FileText,
+  Settings,
+  LogOut,
+  ChevronRight,
+  Megaphone,
+  Folder,
+  Image as ImageIcon,
+  Menu,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useSidebar } from "@/context/sidebar-provider";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
-  userRole?: "admin" | "sales_executive"
+  userRole?: "admin" | "sales_executive";
 }
 
 export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
-  const pathname = usePathname()
-  const { isCollapsed, toggleSidebar } = useSidebar()
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const { logout } = useAuth()
+  const pathname = usePathname();
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const { logout } = useAuth();
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener("resize", checkMobile)
-    return () => window.removeEventListener("resize", checkMobile)
-  }, [])
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const menuItems = [
-    { href: "/dashboard", icon: Home, label: "Dashboard" },
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/inbox", icon: MessageSquare, label: "Inbox" },
-    { href: "/send-message", icon: Send, label: "Send Message" },
-    { href: "/leads", icon: Users, label: "Leads" },
     { href: "/templates", icon: FileText, label: "Templates" },
-    ...(userRole === "admin" ? [{ href: "/users", icon: Users, label: "Users" }] : []),
+    { href: "/campaigns", icon: Megaphone, label: "Campaigns" },
+    { href: "/categories", icon: Folder, label: "Categories" },
+    { href: "/gallery", icon: ImageIcon, label: "Gallery" },
     { href: "/settings", icon: Settings, label: "Settings" },
-  ]
+  ];
 
   if (isMobile) {
     return (
@@ -43,11 +55,18 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
           onClick={() => setIsMobileOpen(!isMobileOpen)}
           className="fixed top-4 left-4 z-50 p-2 bg-sidebar rounded-lg text-sidebar-foreground md:hidden"
         >
-          {isMobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {isMobileOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
         </button>
 
         {isMobileOpen && (
-          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileOpen(false)} />
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsMobileOpen(false)}
+          />
         )}
 
         <aside
@@ -62,14 +81,16 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-md">
                 <MessageSquare className="w-5 h-5 text-primary-foreground" />
               </div>
-              <h1 className="text-lg font-bold text-sidebar-foreground">WhatsApp</h1>
+              <h1 className="text-lg font-bold text-sidebar-foreground">
+                WhatsApp
+              </h1>
             </div>
           </div>
 
           <nav className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-hide">
             {menuItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname.startsWith(item.href)
+              const Icon = item.icon;
+              const isActive = pathname.startsWith(item.href);
 
               return (
                 <Link
@@ -86,7 +107,7 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="truncate">{item.label}</span>
                 </Link>
-              )
+              );
             })}
           </nav>
 
@@ -103,7 +124,7 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
           </div>
         </aside>
       </>
-    )
+    );
   }
 
   return (
@@ -114,11 +135,20 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
       )}
     >
       <div className="flex items-center justify-between px-4 py-6 border-b border-sidebar-border">
-        <div className={cn("flex items-center", isCollapsed ? "w-full justify-center" : "gap-2")}>
+        <div
+          className={cn(
+            "flex items-center",
+            isCollapsed ? "w-full justify-center" : "gap-2",
+          )}
+        >
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-md">
             <MessageSquare className="w-5 h-5 text-primary-foreground" />
           </div>
-          {!isCollapsed && <h1 className="text-lg font-bold text-sidebar-foreground">WhatsApp</h1>}
+          {!isCollapsed && (
+            <h1 className="text-lg font-bold text-sidebar-foreground">
+              WhatsApp
+            </h1>
+          )}
         </div>
 
         <button
@@ -126,14 +156,19 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
           className="p-1.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200 ml-2"
           title={isCollapsed ? "Expand" : "Collapse"}
         >
-          <ChevronRight className={cn("w-4 h-4 transition-transform duration-300", isCollapsed && "rotate-180")} />
+          <ChevronRight
+            className={cn(
+              "w-4 h-4 transition-transform duration-300",
+              isCollapsed && "rotate-180",
+            )}
+          />
         </button>
       </div>
 
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-hide">
         {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname.startsWith(item.href)
+          const Icon = item.icon;
+          const isActive = pathname.startsWith(item.href);
 
           return (
             <div key={item.href} className="group relative">
@@ -160,7 +195,7 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </nav>
 
@@ -188,5 +223,5 @@ export function Sidebar({ userRole = "sales_executive" }: SidebarProps) {
         </div>
       </div>
     </aside>
-  )
+  );
 }
