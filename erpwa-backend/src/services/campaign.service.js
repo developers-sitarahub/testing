@@ -1,7 +1,8 @@
 import prisma from "../prisma.js";
 
 class CampaignService {
-  static async createTemplateCampaign(vendorId, payload) {
+  static async createTemplateCampaign(user, payload) {
+    const vendorId = user.vendorId;
     const {
       name,
       templateId,
@@ -109,6 +110,7 @@ class CampaignService {
         name,
         status: scheduledAt ? "scheduled" : "draft",
         scheduledAt,
+        createdBy: user.id, // 🔒 Track who created this campaign
       },
     });
 
@@ -167,59 +169,50 @@ class CampaignService {
       queuedMessages: messages.length,
     };
   }
-  static async createImageCampaign(vendorId, payload) {
+  static async createImageCampaign(user, payload) {
+    const vendorId = user.vendorId;
     const {
       name,
       categoryId,
       subCategoryId,
-      imageIds, // Array of specific image IDs selected by user
       imageLimit = 100,
       captionMode,
       conversationIds,
+      imageIds, // ✅ Extract imageIds
     } = payload;
 
     if (!conversationIds?.length) {
       throw new Error("Conversations required");
     }
 
-    if (!categoryId && !subCategoryId && (!imageIds || imageIds.length === 0)) {
-      throw new Error("Category, subcategory, or specific image IDs required");
+    if (!categoryId && !subCategoryId) {
+      throw new Error("Category or subcategory required");
     }
 
     // 1️⃣ Fetch images
     const MAX_IMAGES_PER_CONVERSATION = 30;
-    let safeImages;
+    const finalLimit = Math.min(imageIds?.length || imageLimit, MAX_IMAGES_PER_CONVERSATION);
 
+    const where = {
+      vendorId,
+    };
+
+    // If specific images selected, use them. Otherwise fallback to category
     if (imageIds && imageIds.length > 0) {
-      // Use specific image IDs selected by user
-      const selectedImages = await prisma.galleryImage.findMany({
-        where: {
-          id: { in: imageIds },
-          vendorId,
-        },
-        orderBy: { id: "asc" }, // Maintain order
-      });
-
-      if (!selectedImages.length) {
-        throw new Error("Selected images not found");
-      }
-
-      // Apply safety cap
-      safeImages = selectedImages.slice(0, MAX_IMAGES_PER_CONVERSATION);
+      where.id = { in: imageIds };
     } else {
-      // Fallback: fetch by category/subcategory
-      const finalLimit = Math.min(imageLimit, MAX_IMAGES_PER_CONVERSATION);
-
-      const images = await prisma.galleryImage.findMany({
-        where: {
-          vendorId,
-          ...(subCategoryId ? { subCategoryId } : { categoryId }),
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      safeImages = images.slice(0, finalLimit);
+      if (subCategoryId) where.subCategoryId = subCategoryId;
+      else where.categoryId = categoryId;
     }
+
+    // Fetch images
+    const images = await prisma.galleryImage.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    // 🚨 HARD SAFETY CAP
+    const safeImages = images.slice(0, finalLimit);
 
     if (!safeImages.length) {
       throw new Error("No images found");
@@ -256,6 +249,7 @@ class CampaignService {
         captionMode,
         name,
         status: "draft",
+        createdBy: user.id, // 🔒 Track who created this campaign
       },
     });
 
@@ -340,14 +334,22 @@ class CampaignService {
       success: true,
       campaignId: campaign.id,
       conversations: conversations.length,
-      imagesPerConversation: safeImages.length,
+      imagesPerConversation: images.length,
       totalMessagesQueued: totalQueued,
     };
   }
 
-  static async listCampaigns(vendorId) {
+  static async listCampaigns(user) {
+    const vendorId = user.vendorId;
+    const where = { vendorId };
+
+    // 🔒 ROLE-BASED FILTERING: Sales users only see their own campaigns
+    if (user.role === "sales") {
+      where.createdBy = user.id;
+    }
+
     const campaigns = await prisma.campaign.findMany({
-      where: { vendorId },
+      where,
       orderBy: { createdAt: "desc" },
     });
 
