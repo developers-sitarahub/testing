@@ -5,13 +5,13 @@ import { authenticate } from "../middleware/auth.middleware.js";
 const router = express.Router();
 
 /* ===============================
-   GET WEBHOOK LOGS (Admin/Owner only)
+   GET ACTIVITY LOGS (Admin/Owner only)
 =============================== */
 router.get("/", authenticate, async (req, res) => {
     try {
         const { role, vendorId } = req.user;
 
-        console.log("📋 Fetching webhook logs for user:", {
+        console.log("📋 Fetching activity logs for user:", {
             vendorId,
             role,
             userId: req.user.id,
@@ -24,9 +24,10 @@ router.get("/", authenticate, async (req, res) => {
 
         const {
             page = 1,
-            limit = 50, // Increased default limit
+            limit = 50,
             status,
-            eventType,
+            event,
+            type,
             search,
             startDate,
             endDate,
@@ -36,21 +37,21 @@ router.get("/", authenticate, async (req, res) => {
         const take = parseInt(limit);
 
         // Build filter conditions
-        // For 'owner' and 'vendor_owner' roles, show ALL logs (for debugging)
-        // For 'vendor_admin', show only their vendor's logs
         let where = {};
 
         if (role === "owner" || role === "vendor_owner") {
-            // Owner and vendor_owner see everything (useful for debugging)
-            console.log("📋 Showing ALL logs for role:", role);
+            // Owner and vendor_owner see everything
             where = {};
         } else {
             // Vendor admin sees their vendor's logs + system logs (null vendorId)
+            const orConditions = [{ vendorId: null }]; // Always include system logs
+
+            if (vendorId) {
+                orConditions.push({ vendorId: vendorId });
+            }
+
             where = {
-                OR: [
-                    { vendorId: vendorId },
-                    { vendorId: null }, // Include system-level logs like verification
-                ],
+                OR: orConditions,
             };
         }
 
@@ -59,9 +60,14 @@ router.get("/", authenticate, async (req, res) => {
             where.AND.push({ status: status });
         }
 
-        if (eventType && eventType !== "all") {
+        if (event && event !== "all") {
             where.AND = where.AND || [];
-            where.AND.push({ eventType: eventType });
+            where.AND.push({ event: event });
+        }
+
+        if (type && type !== "all") {
+            where.AND = where.AND || [];
+            where.AND.push({ type: type });
         }
 
         if (search) {
@@ -70,7 +76,8 @@ router.get("/", authenticate, async (req, res) => {
                 OR: [
                     { phoneNumber: { contains: search, mode: "insensitive" } },
                     { messageId: { contains: search, mode: "insensitive" } },
-                    { errorMessage: { contains: search, mode: "insensitive" } },
+                    { error: { contains: search, mode: "insensitive" } },
+                    { event: { contains: search, mode: "insensitive" } },
                 ],
             });
         }
@@ -79,40 +86,60 @@ router.get("/", authenticate, async (req, res) => {
             where.AND = where.AND || [];
             const dateFilter = {};
             if (startDate) {
-                dateFilter.gte = new Date(startDate);
+                const start = new Date(startDate);
+                if (!isNaN(start.getTime())) {
+                    dateFilter.gte = start;
+                }
             }
             if (endDate) {
-                dateFilter.lte = new Date(endDate);
+                const end = new Date(endDate);
+                if (!isNaN(end.getTime())) {
+                    dateFilter.lte = end;
+                }
             }
-            where.AND.push({ createdAt: dateFilter });
+            if (Object.keys(dateFilter).length > 0) {
+                where.AND.push({ createdAt: dateFilter });
+            }
         }
 
         console.log("📋 Query where clause:", JSON.stringify(where, null, 2));
 
+        // Safety check for Prisma model
+        if (!prisma.activityLog) {
+            throw new Error("prisma.activityLog is undefined. Please run 'npx prisma generate' and restart the server.");
+        }
+
         // Fetch logs with pagination
         const [logs, total] = await Promise.all([
-            prisma.webhookLog.findMany({
+            prisma.activityLog.findMany({
                 where,
                 orderBy: { createdAt: "desc" },
                 skip,
                 take,
             }),
-            prisma.webhookLog.count({ where }),
+            prisma.activityLog.count({ where }),
         ]);
 
         console.log("📋 Found", total, "logs, returning", logs.length);
 
-        // Get statistics using the SAME filter as the logs query
-        const stats = await prisma.webhookLog.groupBy({
+        // Get statistics - map statuses properly
+        const stats = await prisma.activityLog.groupBy({
             by: ["status"],
-            where: where, // Use same where clause as logs
+            where: where,
             _count: { id: true },
         });
 
         const statsMap = {
+            read: 0,
+            delivered: 0,
+            sent: 0,
+            failed: 0,
+            template_approved: 0,
+            approved: 0,
+            received: 0,
             success: 0,
             error: 0,
-            ignored: 0,
+            ignored: 0
         };
 
         stats.forEach((s) => {
@@ -132,13 +159,14 @@ router.get("/", authenticate, async (req, res) => {
             stats: statsMap,
         });
     } catch (err) {
-        console.error("Error fetching webhook logs:", err);
-        res.status(500).json({ message: "Failed to fetch webhook logs", error: err.message });
+        console.error("Error fetching activity logs:", err);
+        console.error(err.stack); // Log stack trace
+        res.status(500).json({ message: "Failed to fetch activity logs", error: err.message });
     }
 });
 
 /* ===============================
-   GET SINGLE WEBHOOK LOG DETAIL
+   GET SINGLE ACTIVITY LOG DETAIL
 =============================== */
 router.get("/:id", authenticate, async (req, res) => {
     try {
@@ -148,10 +176,10 @@ router.get("/:id", authenticate, async (req, res) => {
             return res.status(403).json({ message: "Access denied" });
         }
 
-        const log = await prisma.webhookLog.findFirst({
+        const log = await prisma.activityLog.findFirst({
             where: {
                 id: req.params.id,
-                vendorId: vendorId,
+                ...(role !== "owner" && role !== "vendor_owner" ? { vendorId: vendorId } : {}),
             },
         });
 
@@ -161,8 +189,8 @@ router.get("/:id", authenticate, async (req, res) => {
 
         res.json(log);
     } catch (err) {
-        console.error("Error fetching webhook log:", err);
-        res.status(500).json({ message: "Failed to fetch webhook log" });
+        console.error("Error fetching activity log:", err);
+        res.status(500).json({ message: "Failed to fetch activity log" });
     }
 });
 
@@ -181,20 +209,32 @@ router.delete("/clear", authenticate, async (req, res) => {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - parseInt(olderThanDays));
 
-        const result = await prisma.webhookLog.deleteMany({
-            where: {
-                vendorId,
-                createdAt: { lt: cutoffDate },
-            },
+        // Build where clause
+        let where = {
+            createdAt: { lt: cutoffDate },
+        };
+
+        // Owner and vendor_owner can clear ALL logs
+        // Otherwise only clear their vendor's logs
+        if (role !== "owner" && role !== "vendor_owner") {
+            where.vendorId = vendorId;
+        }
+
+        console.log("🗑️ Clearing logs with where:", JSON.stringify(where, null, 2));
+
+        const result = await prisma.activityLog.deleteMany({
+            where,
         });
+
+        console.log("🗑️ Deleted", result.count, "logs");
 
         res.json({
             message: `Deleted ${result.count} logs older than ${olderThanDays} days`,
             deletedCount: result.count,
         });
     } catch (err) {
-        console.error("Error clearing webhook logs:", err);
-        res.status(500).json({ message: "Failed to clear logs" });
+        console.error("Error clearing activity logs:", err);
+        res.status(500).json({ message: "Failed to clear logs", error: err.message });
     }
 });
 

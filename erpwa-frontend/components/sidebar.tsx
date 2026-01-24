@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-provider";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/logo";
 
 /* ✅ Menu config matching Sales routes */
 const menuItems = [
@@ -108,9 +109,8 @@ export function Sidebar() {
             isMobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <div className="flex items-center gap-2 px-4 h-16 border-b border-sidebar-border">
-            <MessageSquare className="w-6 h-6 text-primary" />
-            <span className="font-bold text-sidebar-foreground">WhatsApp</span>
+          <div className="flex items-center justify-center px-2 h-16 border-b border-sidebar-border">
+            <Logo className="h-12 w-full max-w-[220px]" />
           </div>
 
           <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
@@ -126,7 +126,7 @@ export function Sidebar() {
               Logout
             </button>
           </div>
-        </aside>
+        </aside >
       </>
     );
   }
@@ -139,25 +139,27 @@ export function Sidebar() {
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-      <div className="flex items-center justify-between px-4 h-16 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-primary" />
-          {!isCollapsed && (
-            <span className="font-bold text-sidebar-foreground">WhatsApp</span>
-          )}
+      <div className="flex items-center justify-between px-2 h-16 border-b border-sidebar-border">
+        <div className={cn("flex items-center transition-all duration-300", isCollapsed ? "justify-center w-full" : "justify-start pl-4 flex-1")}>
+          <Logo collapsed={isCollapsed} isSidebar={true} className={cn("transition-all duration-300", isCollapsed ? "h-12 w-12" : "h-12 w-full max-w-[220px]")} />
         </div>
 
-        <button
-          onClick={toggleSidebar}
-          className="p-1.5 rounded-lg hover:bg-sidebar-accent"
-        >
-          <ChevronRight
-            className={cn(
-              "w-4 h-4 transition-transform",
-              isCollapsed && "rotate-180"
-            )}
-          />
-        </button>
+        {!isCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-lg hover:bg-sidebar-accent ml-1"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+        {isCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="absolute right-2 top-5 p-1.5 rounded-lg hover:bg-sidebar-accent"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">

@@ -8,60 +8,180 @@ import { decrypt } from "../utils/encryption.js";
 const router = express.Router();
 
 /* ===============================
-   HELPER: Log webhook event
+   HELPER: Log activity
 =============================== */
-async function logWebhookEvent({
+async function logActivity({
   vendorId,
-  eventType,
-  direction,
-  phoneNumber,
+  conversationId,
   messageId,
+  phoneNumber,
+  type,
   status,
-  requestPayload,
+  event,
+  category,
+  error,
+  payload,
+  // New fields from WebhookLog
+  direction,
   responseCode,
-  errorMessage,
   processingMs,
 }) {
   try {
-    console.log("📝 Logging webhook event:", { vendorId, eventType, status, phoneNumber });
+    // 1. Extract Category from Payload (Deep check for pricing.category)
+    let finalCategory = category;
+    if (!finalCategory && payload) {
+      if (payload.pricing?.category) {
+        finalCategory = String(payload.pricing.category);
+      } else if (payload.category) {
+        finalCategory = String(payload.category);
+      } else if (payload.categoryId) {
+        finalCategory = String(payload.categoryId);
+      }
+    }
 
-    const log = await prisma.webhookLog.create({
-      data: {
-        vendorId,
-        eventType,
-        direction,
-        phoneNumber,
-        messageId,
-        status,
-        requestPayload,
-        responseCode,
-        errorMessage,
-        processingMs,
-      },
-    });
-    console.log("✅ Webhook log created successfully");
+    // 2. Determine Message Type & Conversation Context
+    // We expect 'messageId' to be the WAMID (WhatsApp Message ID) for consistency
+    let messageType = type;
+    let dbVendorId = vendorId;
+    let dbConversationId = conversationId;
+    let dbPhoneNumber = phoneNumber;
 
-    // 🔥 Emit real-time update for webhook logs page
+    // Check if we already have a log for this WAMID to inherit data
+    // 🕒 Race Condition Mitigation: Wait slightly to increase chance that "Sent" log is written
+    if (status !== "sent" && status !== "received" && status !== "created" && status !== "started") {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    let existingLog = null;
+    if (messageId) {
+      // Attempt 1: Immediate lookup
+      existingLog = await prisma.activityLog.findFirst({
+        where: { messageId: messageId },
+      });
+      console.log(`🔎 Lookup 1 for messageId: ${messageId} -> Found: ${!!existingLog}`);
+
+      // Attempt 2: If not found, wait and try again (Race Condition Handling)
+      if (!existingLog) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        existingLog = await prisma.activityLog.findFirst({
+          where: { messageId: messageId },
+        });
+        console.log(`🔎 Lookup 2 for messageId: ${messageId} -> Found: ${!!existingLog}`);
+      }
+
+      if (existingLog) {
+        // Inherit connection details
+        if (!finalCategory) finalCategory = existingLog.category;
+        if (!dbVendorId) dbVendorId = existingLog.vendorId;
+        if (!dbConversationId) dbConversationId = existingLog.conversationId;
+        if (!dbPhoneNumber) dbPhoneNumber = existingLog.phoneNumber;
+
+        // Inherit type, BUT allow campaign check to override if it's generic
+        if (!messageType) messageType = existingLog.type;
+      }
+
+      // Always check Message table to resolve campaign details if not fully certain 
+      // (or if we want to ensure "Campaign" type is reflected)
+      if (!messageType || !dbConversationId || !messageType.includes("Campaign")) {
+        try {
+          const message = await prisma.message.findFirst({
+            where: { whatsappMessageId: messageId },
+            include: {
+              campaign: true, // ✅ Include campaign to determine type
+              conversation: {
+                select: {
+                  lead: { select: { leadCategory: true, categoryId: true } }
+                }
+              }
+            }
+          });
+
+          if (message) {
+            // Determine type based on Campaign
+            if (message.campaign) {
+              if (message.campaign.type === "IMAGE") messageType = "Image Campaign";
+              else if (message.campaign.type === "TEMPLATE") messageType = "Template Campaign";
+              else messageType = "Campaign";
+            } else if (!messageType) {
+              // Only use message type if we didn't have one and not campaign
+              messageType = message.messageType;
+            }
+
+            dbConversationId = dbConversationId || message.conversationId;
+            dbVendorId = dbVendorId || message.vendorId;
+
+            if (!finalCategory) {
+              if (message.conversation?.lead?.leadCategory?.name) {
+                finalCategory = message.conversation.lead.leadCategory.name;
+              }
+            }
+          }
+        } catch (err) { }
+      }
+    }
+
+    // Fallback type
+    if (!messageType) {
+      messageType = "system_event"; // Changed from "webhook"
+    }
+
+    // 3. Determine Final Status
+    let finalStatus = status;
+    if (error && !["read", "delivered", "sent", "received", "created", "started", "completed"].includes(status)) {
+      finalStatus = "failed";
+    }
+    const errorData = error && !["read", "delivered", "sent", "received", "created", "started", "completed"].includes(finalStatus) ? error : null;
+
+    // 4. Upsert Logic
+    const dataPayload = {
+      status: finalStatus,
+      event: event || existingLog?.event || "operation",
+      error: errorData,
+      payload: payload,
+      // ❌ No updatedAt
+
+      vendorId: dbVendorId,
+      conversationId: dbConversationId,
+      phoneNumber: dbPhoneNumber,
+      type: messageType,
+      category: finalCategory,
+      direction: direction || existingLog?.direction,
+      responseCode: responseCode || existingLog?.responseCode,
+      processingMs: (existingLog?.processingMs || 0) + (processingMs || 0),
+    };
+
+    let activityLog;
+    if (messageId && existingLog) {
+      // ✅ UPDATE existing log
+      activityLog = await prisma.activityLog.update({
+        where: { id: existingLog.id },
+        data: dataPayload,
+      });
+      console.log("📝 Activity Log Updated:", { messageId, status: finalStatus, type: messageType });
+    } else {
+      // ✅ CREATE new log
+      activityLog = await prisma.activityLog.create({
+        data: {
+          ...dataPayload,
+          messageId, // Ensure messageId is set for create
+        },
+      });
+      console.log("✅ Activity Log Created:", { messageId, status: finalStatus, type: messageType });
+    }
+
+    // 🔥 Emit real-time update
     try {
       const io = getIO();
-      io.emit("webhook-log:new", {
-        id: log.id,
-        vendorId: log.vendorId,
-        eventType: log.eventType,
-        direction: log.direction,
-        phoneNumber: log.phoneNumber,
-        messageId: log.messageId,
-        status: log.status,
-        requestPayload: log.requestPayload,
-        responseCode: log.responseCode,
-        errorMessage: log.errorMessage,
-        processingMs: log.processingMs,
-        createdAt: log.createdAt.toISOString(),
+      io.emit("activity-log:new", {
+        ...activityLog,
+        createdAt: activityLog.createdAt.toISOString(),
       });
     } catch { }
+
+    return activityLog;
   } catch (err) {
-    console.error("❌ Failed to log webhook event:", err.message);
-    // Never throw - logging should not break webhook
+    console.error("❌ Failed to log activity:", err.message);
   }
 }
 
@@ -75,32 +195,28 @@ router.get("/", async (req, res) => {
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-    await logWebhookEvent({
+    await logActivity({
       vendorId: null,
-      eventType: "verification",
-      direction: null,
-      phoneNumber: null,
-      messageId: null,
+      eventType: "verification", // Maps to event
+      event: "verification",
       status: "success",
-      requestPayload: { mode, challenge: "***" },
+      payload: { mode, challenge: "***" },
       responseCode: 200,
-      errorMessage: null,
       processingMs: Date.now() - startTime,
+      type: "webhook",
     });
     return res.status(200).send(challenge);
   }
 
-  await logWebhookEvent({
+  await logActivity({
     vendorId: null,
-    eventType: "verification",
-    direction: null,
-    phoneNumber: null,
-    messageId: null,
+    event: "verification",
     status: "error",
-    requestPayload: { mode, token: token ? "***" : null },
+    payload: { mode, token: token ? "***" : null },
     responseCode: 403,
-    errorMessage: "Invalid verification token",
+    error: "Invalid verification token",
     processingMs: Date.now() - startTime,
+    type: "webhook",
   });
 
   return res.sendStatus(403);
@@ -126,59 +242,51 @@ router.post("/", async (req, res) => {
 
     if (!value) {
       logStatus = "ignored";
-      await logWebhookEvent({
+      await logActivity({
         vendorId,
-        eventType: "empty",
-        direction,
-        phoneNumber,
-        messageId,
+        event: "empty",
         status: logStatus,
-        requestPayload: req.body,
+        payload: req.body,
         responseCode: 200,
-        errorMessage: "No value in payload",
+        error: "No value in payload",
         processingMs: Date.now() - startTime,
+        type: "webhook",
       });
       return res.sendStatus(200);
     }
 
     /* ===============================
-       Resolve Vendor by phone_number_id
+       Resolve Vendor
     =============================== */
     const phoneNumberId = value.metadata?.phone_number_id;
-    if (!phoneNumberId) {
-      logStatus = "ignored";
-      await logWebhookEvent({
-        vendorId,
-        eventType: "unknown",
-        direction,
-        phoneNumber,
-        messageId,
-        status: logStatus,
-        requestPayload: req.body,
-        responseCode: 200,
-        errorMessage: "No phone_number_id in metadata",
-        processingMs: Date.now() - startTime,
+    const wabaId = entry?.id; // WABA ID from the entry object
+
+    let vendor = null;
+
+    if (phoneNumberId) {
+      vendor = await prisma.vendor.findFirst({
+        where: { whatsappPhoneNumberId: phoneNumberId },
       });
-      return res.sendStatus(200);
     }
 
-    const vendor = await prisma.vendor.findFirst({
-      where: { whatsappPhoneNumberId: phoneNumberId },
-    });
+    // Fallback: Try finding by WABA ID (useful for template updates which lack phone_number_id)
+    if (!vendor && wabaId) {
+      vendor = await prisma.vendor.findFirst({
+        where: { whatsappBusinessId: wabaId },
+      });
+    }
 
     if (!vendor) {
       logStatus = "ignored";
-      await logWebhookEvent({
-        vendorId,
-        eventType: "unknown",
-        direction,
-        phoneNumber,
-        messageId,
+      await logActivity({
+        vendorId: null, // Can't resolve vendor
+        event: "unknown",
         status: logStatus,
-        requestPayload: req.body,
+        payload: req.body,
         responseCode: 200,
-        errorMessage: `No vendor found for phoneNumberId: ${phoneNumberId}`,
+        error: `No vendor found. PhoneID: ${phoneNumberId}, WABA ID: ${wabaId}`,
         processingMs: Date.now() - startTime,
+        type: "webhook",
       });
       return res.sendStatus(200);
     }
@@ -214,17 +322,19 @@ router.post("/", async (req, res) => {
           where: { whatsappMessageId },
         });
         if (exists) {
-          await logWebhookEvent({
+          // Log ignored duplicate
+          await logActivity({
             vendorId,
-            eventType,
-            direction,
-            phoneNumber,
-            messageId,
             status: "ignored",
-            requestPayload: msg,
-            responseCode: 200,
-            errorMessage: "Duplicate message - already exists",
+            event: "receive_duplicate",
+            payload: msg,
+            messageId: msg.id,
+            phoneNumber: msg.from,
+            direction: "inbound",
             processingMs: Date.now() - startTime,
+            error: "Duplicate message",
+            responseCode: 200,
+            type: msg.type
           });
           continue;
         }
@@ -304,6 +414,7 @@ router.post("/", async (req, res) => {
           },
         });
 
+        // Handle Media download logic (removed for brevity, but assumed unchanged if not shown)
         if (
           ["image", "video", "audio", "document", "sticker"].includes(msg.type)
         ) {
@@ -364,48 +475,40 @@ router.post("/", async (req, res) => {
             include: { media: true },
           });
 
-          console.log("📤 Emitting message:new to conversation:", conversation.id);
-          console.log("📤 Message data:", {
-            id: fullMessage.id,
-            sender: "customer",
-            text: fullMessage.media.length ? undefined : fullMessage.content,
-          });
-
           io.to(`conversation:${conversation.id}`).emit("message:new", {
             id: fullMessage.id,
             whatsappMessageId: fullMessage.whatsappMessageId,
             sender: "customer",
             timestamp: fullMessage.createdAt.toISOString(),
             replyToMessageId: fullMessage.replyToMessageId,
-
             text: fullMessage.media.length ? undefined : fullMessage.content,
-
             mediaUrl: fullMessage.media[0]?.mediaUrl,
             mimeType: fullMessage.media[0]?.mimeType,
             caption: fullMessage.media[0]?.caption,
           });
-          console.log("✅ Socket emit successful");
-        } catch (socketErr) {
-          console.error("❌ Socket emit failed:", socketErr.message);
-          // socket not ready – ignore (webhook must never fail)
-        }
+        } catch (socketErr) { }
 
         // Log successful message processing
-        await logWebhookEvent({
+        await logActivity({
           vendorId,
-          eventType,
-          direction,
+          conversationId: conversation.id,
+          messageId: inboundMessage.id,
           phoneNumber,
-          messageId,
-          status: "success",
-          requestPayload: msg,
+          status: "received", // Consistent with ActivityLog
+          event: "Received", // Operation
+          category: lead.categoryId ? String(lead.categoryId) : null,
+          payload: msg,
+          direction: "inbound",
           responseCode: 200,
-          errorMessage: null,
           processingMs: Date.now() - startTime,
+          type: msg.type
         });
       }
     }
 
+    /* =====================================================
+       2️⃣ HANDLE MESSAGE STATUS UPDATES
+    ===================================================== */
     /* =====================================================
        2️⃣ HANDLE MESSAGE STATUS UPDATES
     ===================================================== */
@@ -417,26 +520,52 @@ router.post("/", async (req, res) => {
         const whatsappMessageId = waStatus.id;
         const waState = waStatus.status; // sent | delivered | read | failed
         phoneNumber = waStatus.recipient_id;
-        messageId = whatsappMessageId;
+        messageId = whatsappMessageId; // Always use WAMID
 
-        // 🛑 Ignore statuses we don't care about
-        if (!["delivered", "read", "failed"].includes(waState)) {
-          await logWebhookEvent({
+        // Log "sent" status
+        if (waState === "sent") {
+          await logActivity({
             vendorId,
-            eventType,
-            direction,
+            status: "sent",
+            event: "Sent", // Operation name
+            payload: waStatus,
+            messageId: whatsappMessageId, // WAMID
             phoneNumber,
-            messageId,
-            status: "ignored",
-            requestPayload: waStatus,
-            responseCode: 200,
-            errorMessage: `Ignoring status: ${waState}`,
+            direction: "outbound_status",
             processingMs: Date.now() - startTime,
+            responseCode: 200,
           });
           continue;
         }
 
+        // 🛑 Ignore statuses we don't care about (anything other than sent, delivered, read, failed)
+        if (!["delivered", "read", "failed"].includes(waState)) {
+          continue; // Ignore
+        }
+
         // 🔒 Only update messages that are already SENT or DELIVERED
+        const messageToUpdate = await prisma.message.findFirst({
+          where: { whatsappMessageId },
+          select: { id: true, conversationId: true, messageType: true },
+        });
+
+        if (!messageToUpdate) {
+          // Even if we don't find it in DB, we log the status update for visibility, using WAMID
+          await logActivity({
+            vendorId,
+            status: waState === "failed" ? "failed" : waState,
+            event: "Sent", // Keep event as "Sent" even for updates
+            payload: waStatus,
+            messageId: whatsappMessageId, // WAMID
+            phoneNumber,
+            direction: "outbound_status",
+            processingMs: Date.now() - startTime,
+            responseCode: 200,
+            error: (waState === "failed" && waStatus.errors?.length) ? waStatus.errors[0].message : null
+          });
+          continue;
+        }
+
         const updated = await prisma.message.updateMany({
           where: {
             whatsappMessageId,
@@ -453,39 +582,33 @@ router.post("/", async (req, res) => {
           },
         });
 
-        if (!updated.count) {
-          await logWebhookEvent({
-            vendorId,
-            eventType,
-            direction,
-            phoneNumber,
-            messageId,
-            status: "ignored",
-            requestPayload: waStatus,
-            responseCode: 200,
-            errorMessage: "No matching message to update",
-            processingMs: Date.now() - startTime,
-          });
-          continue;
-        }
-
-        const message = await prisma.message.findFirst({
-          where: { whatsappMessageId },
-          select: { conversationId: true },
+        // 📝 Log activity for status update - logic inside logActivity will handle upsert via WAMID
+        const isActualError = waState === "failed" && waStatus.errors?.length;
+        await logActivity({
+          vendorId,
+          conversationId: messageToUpdate.conversationId, // Pass context if known
+          messageId: whatsappMessageId, // WAMID
+          phoneNumber,
+          status: waState === "failed" ? "failed" : waState,
+          event: "Sent", // Keep event as "Sent" -> Status column will show "Delivered"/"Read"
+          error: isActualError ? waStatus.errors[0]?.message : null,
+          payload: waStatus,
+          direction: "outbound_status",
+          responseCode: 200,
+          processingMs: Date.now() - startTime,
+          // type can be inferred by logActivity via WAMID
         });
-
-        if (!message) continue;
 
         // ✅ Keep inbox ordering correct
         await prisma.conversation.update({
-          where: { id: message.conversationId },
+          where: { id: messageToUpdate.conversationId },
           data: { lastMessageAt: new Date() },
         });
 
         // 🔥 Realtime status update to UI
         try {
           const io = getIO();
-          io.to(`conversation:${message.conversationId}`).emit(
+          io.to(`conversation:${messageToUpdate.conversationId}`).emit(
             "message:status",
             {
               whatsappMessageId,
@@ -493,21 +616,48 @@ router.post("/", async (req, res) => {
             }
           );
         } catch { }
-
-        // Log successful status update
-        await logWebhookEvent({
-          vendorId,
-          eventType,
-          direction,
-          phoneNumber,
-          messageId,
-          status: waState === "failed" ? "error" : "success",
-          requestPayload: waStatus,
-          responseCode: 200,
-          errorMessage: waStatus.errors?.[0]?.message || null,
-          processingMs: Date.now() - startTime,
-        });
       }
+    }
+
+    /* =====================================================
+       3️⃣ HANDLE TEMPLATE APPROVAL EVENTS
+    ===================================================== */
+    if (value.message_template_status_update) {
+      eventType = "template_status";
+      direction = "inbound";
+
+      const templateUpdate = value.message_template_status_update;
+      const templateEvent = templateUpdate.event; // APPROVED | REJECTED | PENDING
+      // const templateId = templateUpdate.message_template_id;
+
+      let opEvent = "Template Update";
+      let opStatus = "received";
+
+      if (templateEvent === "APPROVED") {
+        opEvent = "Template Created";
+        opStatus = "created";
+      } else if (templateEvent === "REJECTED") {
+        opEvent = "Template Rejected";
+        opStatus = "failed";
+      } else if (templateEvent === "PENDING") {
+        opEvent = "Template Pending";
+        opStatus = "pending";
+      } else {
+        // Fallback for "created" or other events
+        opEvent = templateEvent;
+        opStatus = "received";
+      }
+
+      await logActivity({
+        vendorId,
+        type: "Template", // Proper casing
+        status: opStatus,
+        event: opEvent,
+        payload: templateUpdate,
+        responseCode: 200,
+        processingMs: Date.now() - startTime,
+        direction: "inbound"
+      });
     }
 
     return res.sendStatus(200);
@@ -515,17 +665,15 @@ router.post("/", async (req, res) => {
     console.error("WhatsApp webhook error:", err);
 
     // Log the error
-    await logWebhookEvent({
+    await logActivity({
       vendorId,
-      eventType,
-      direction,
-      phoneNumber,
-      messageId,
       status: "error",
-      requestPayload: req.body,
+      event: "uncaught_error",
+      payload: req.body,
       responseCode: 200,
-      errorMessage: err.message || "Unknown error",
+      error: err.message || "Unknown error",
       processingMs: Date.now() - startTime,
+      type: "webhook"
     });
 
     return res.sendStatus(200); // 👈 NEVER fail webhook
