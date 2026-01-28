@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express"; // Restart trigger
+import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import http from "http";
@@ -13,6 +13,7 @@ import whatsappWebhookRoutes from "./routes/whatsappWebhook.route.js";
 import whatsappTestRoutes from "./routes/whatsappTest.route.js";
 import vendorTemplateRoutes from "./routes/vendorTemplate.route.js";
 import vendorWhatsappTemplateSendRoutes from "./routes/vendorWhatsappTemplateSend.route.js";
+import workflowRoutes from "./routes/workflow.routes.js";
 import inboxRoutes from "./routes/inbox.route.js";
 import categoryRoutes from "./routes/category.routes.js";
 import leadRoutes from "./routes/lead.routes.js";
@@ -43,7 +44,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-  })
+  }),
 );
 
 app.set("etag", false);
@@ -58,6 +59,7 @@ app.use("/api/vendor", vendorWhatsappRoutes);
 app.use("/api/vendor/whatsapp", vendorWhatsappMessageRoutes);
 app.use("/api/vendor/templates", vendorTemplateRoutes);
 app.use("/api/vendor/whatsapp/template", vendorWhatsappTemplateSendRoutes);
+app.use("/api/workflow", workflowRoutes);
 app.use("/api/inbox", inboxRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/leads", leadRoutes);

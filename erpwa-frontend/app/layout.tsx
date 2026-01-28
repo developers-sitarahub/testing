@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/context/theme-provider";
 import { AuthProvider } from "@/context/authContext";
 import { ToastContainer } from "react-toastify";
 import { UploadProvider } from "@/context/GlobalUploadContext";
-import { Toaster } from "sonner";
 import "react-toastify/dist/ReactToastify.css";
 
 import "./globals.css";
@@ -15,8 +14,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "GPS erp",
-  description:
-    "Professional sales and support management dashboard",
+  description: "Professional sales and support management dashboard",
 };
 
 export default function RootLayout({
@@ -44,9 +42,6 @@ export default function RootLayout({
             toastClassName="toast-base"
             progressClassName="toast-progress"
           />
-
-          {/* Sonner Toast for Flows */}
-          <Toaster position="top-center" richColors />
         </ThemeProvider>
       </body>
     </html>
