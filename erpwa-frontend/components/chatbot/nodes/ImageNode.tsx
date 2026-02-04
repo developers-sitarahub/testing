@@ -49,36 +49,38 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
   return (
     <>
       <div
-        className={`relative shadow-xl rounded-xl bg-white border-2 transition-all duration-200 w-[200px] ${
-          selected ? "border-primary ring-4 ring-primary/10" : "border-gray-100"
+        className={`relative shadow-xl rounded-xl bg-white dark:bg-slate-800 border-2 transition-all duration-200 w-[200px] ${
+          selected
+            ? "border-primary ring-4 ring-primary/10"
+            : "border-gray-100 dark:border-slate-700"
         }`}
       >
         {/* Node Header */}
-        <div className="bg-gray-50/80 px-3 py-2 border-b border-gray-100 flex items-center justify-between rounded-t-xl">
+        <div className="bg-gray-50/80 dark:bg-slate-900/80 px-3 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-pink-500 flex items-center justify-center text-white">
               <ImageIcon size={12} />
             </div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Image
             </span>
           </div>
           <div className="flex items-center gap-1 text-gray-400">
             <button
               onClick={handleDeleteClick}
-              className="p-1 px-2 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+              className="p-1 px-2 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
             >
               <Trash2 size={14} />
             </button>
           </div>
         </div>
 
-        <div className="p-3 bg-white space-y-3">
+        <div className="p-3 bg-white dark:bg-slate-800 space-y-3">
           {isEditing ? (
             <div className="space-y-3 nodrag">
               <input
                 type="text"
-                className="w-full text-xs font-bold border-none bg-gray-50 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none"
+                className="w-full text-xs font-bold border-none bg-gray-50 dark:bg-slate-900 dark:text-gray-200 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none"
                 value={localData.label}
                 onChange={(e) =>
                   setLocalData({ ...localData, label: e.target.value })
@@ -88,7 +90,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
 
               <div
                 onClick={() => setIsGalleryOpen(true)}
-                className="relative aspect-video w-full rounded-md overflow-hidden bg-gray-100 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors group"
+                className="relative aspect-video w-full rounded-md overflow-hidden bg-gray-100 dark:bg-slate-900 border-2 border-dashed border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors group"
               >
                 {localData.imageUrl ? (
                   <>
@@ -112,7 +114,7 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               </div>
 
               <textarea
-                className="w-full text-xs border-none bg-gray-50 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none min-h-[40px] resize-none"
+                className="w-full text-xs border-none bg-gray-50 dark:bg-slate-900 dark:text-gray-200 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none min-h-[40px] resize-none"
                 value={localData.content}
                 onChange={(e) =>
                   setLocalData({ ...localData, content: e.target.value })
@@ -132,12 +134,12 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
               className="cursor-text group"
               onDoubleClick={() => setIsEditing(true)}
             >
-              <div className="text-[11px] font-bold text-gray-800 mb-2 truncate group-hover:text-primary transition-colors">
+              <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200 mb-2 truncate group-hover:text-primary transition-colors">
                 {data.label || "Image Step"}
               </div>
 
               {data.imageUrl ? (
-                <div className="relative aspect-video w-full rounded-md overflow-hidden bg-gray-100 border border-gray-100">
+                <div className="relative aspect-video w-full rounded-md overflow-hidden bg-gray-100 dark:bg-slate-900 border border-gray-100 dark:border-slate-700">
                   <img
                     src={data.imageUrl}
                     className="w-full h-full object-cover"
@@ -145,13 +147,13 @@ const ImageNode = ({ id, data, selected }: NodeProps) => {
                   />
                 </div>
               ) : (
-                <div className="aspect-video w-full rounded-md border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 text-[10px] text-gray-400 italic">
+                <div className="aspect-video w-full rounded-md border-2 border-dashed border-gray-200 dark:border-slate-700 flex items-center justify-center bg-gray-50 dark:bg-slate-900 text-[10px] text-gray-400 italic">
                   No image selected
                 </div>
               )}
 
               {data.content && (
-                <div className="mt-2 text-[10px] text-gray-500 leading-snug italic line-clamp-2">
+                <div className="mt-2 text-[10px] text-gray-500 dark:text-gray-400 leading-snug italic line-clamp-2">
                   &quot;{data.content}&quot;
                 </div>
               )}

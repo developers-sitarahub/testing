@@ -40,24 +40,26 @@ const MessageNode = ({ id, data, selected }: NodeProps) => {
   return (
     <>
       <div
-        className={`relative shadow-xl rounded-xl bg-white border-2 transition-all duration-200 min-w-[220px] ${
-          selected ? "border-primary ring-4 ring-primary/10" : "border-gray-100"
+        className={`relative shadow-xl rounded-xl bg-white dark:bg-slate-800 border-2 transition-all duration-200 min-w-[220px] ${
+          selected
+            ? "border-primary ring-4 ring-primary/10"
+            : "border-gray-100 dark:border-slate-700"
         }`}
       >
         {/* Node Header */}
-        <div className="bg-gray-50/80 px-3 py-2 border-b border-gray-100 flex items-center justify-between rounded-t-xl">
+        <div className="bg-gray-50/80 dark:bg-slate-900/80 px-3 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center text-white">
               <MessageSquare size={12} />
             </div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Message
             </span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={handleDeleteClick}
-              className="p-1 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+              className="p-1 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
               title="Delete Node"
             >
               <Trash2 size={14} />
@@ -66,12 +68,12 @@ const MessageNode = ({ id, data, selected }: NodeProps) => {
         </div>
 
         {/* Node Body */}
-        <div className="p-3 bg-white space-y-3">
+        <div className="p-3 bg-white dark:bg-slate-800 space-y-3">
           {isEditing ? (
             <div className="space-y-2 nodrag">
               <input
                 type="text"
-                className="w-full text-xs font-bold border-none bg-gray-50 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none"
+                className="w-full text-xs font-bold border-none bg-gray-50 dark:bg-slate-900 dark:text-gray-200 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none"
                 value={localData.label}
                 onChange={(e) =>
                   setLocalData({ ...localData, label: e.target.value })
@@ -80,7 +82,7 @@ const MessageNode = ({ id, data, selected }: NodeProps) => {
                 autoFocus
               />
               <textarea
-                className="w-full text-xs border-none bg-gray-50 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none min-h-[60px] resize-none"
+                className="w-full text-xs border-none bg-gray-50 dark:bg-slate-900 dark:text-gray-200 p-2 rounded-md focus:ring-1 focus:ring-primary outline-none min-h-[60px] resize-none"
                 value={localData.content}
                 onChange={(e) =>
                   setLocalData({ ...localData, content: e.target.value })
@@ -99,10 +101,10 @@ const MessageNode = ({ id, data, selected }: NodeProps) => {
               className="cursor-text group min-h-[40px]"
               onDoubleClick={() => setIsEditing(true)}
             >
-              <div className="text-[11px] font-bold text-gray-800 mb-1 group-hover:text-primary transition-colors">
+              <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200 mb-1 group-hover:text-primary transition-colors">
                 {data.label || "Click to edit label"}
               </div>
-              <div className="text-xs text-gray-600 leading-relaxed italic">
+              <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed italic">
                 {data.content
                   ? `"${data.content}"`
                   : "Double click to add message content..."}

@@ -50,7 +50,7 @@ export default function ButtonEdge({
           className="nodrag nopan"
         >
           <button
-            className="w-5 h-5 bg-white border border-gray-200 rounded-full shadow-sm flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all cursor-pointer"
+            className="w-5 h-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full shadow-sm flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-white hover:bg-red-500 hover:border-red-500 transition-all cursor-pointer"
             onClick={onEdgeClick}
             title="Remove connection"
           >

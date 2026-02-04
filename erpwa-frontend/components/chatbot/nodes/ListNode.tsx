@@ -71,33 +71,33 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
   return (
     <>
       <div
-        className={`relative shadow-xl rounded-xl bg-white border-2 transition-all duration-200 min-w-[240px] ${
+        className={`relative shadow-xl rounded-xl bg-white dark:bg-slate-800 border-2 transition-all duration-200 min-w-[240px] ${
           selected
             ? "border-blue-500 ring-4 ring-blue-500/10"
-            : "border-gray-100"
+            : "border-gray-100 dark:border-slate-700"
         }`}
       >
         {/* Node Header */}
-        <div className="bg-gray-50/80 px-3 py-2 border-b border-gray-100 flex items-center justify-between rounded-t-xl">
+        <div className="bg-gray-50/80 dark:bg-slate-900/80 px-3 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between rounded-t-xl">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center text-white">
               <List size={12} />
             </div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               List Menu
             </span>
           </div>
           <div className="flex items-center gap-1 text-gray-400">
             <button
               onClick={handleDeleteClick}
-              className="p-1 px-2 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+              className="p-1 px-2 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
             >
               <Trash2 size={14} />
             </button>
           </div>
         </div>
 
-        <div className="p-3 bg-white space-y-3">
+        <div className="p-3 bg-white dark:bg-slate-800 space-y-3">
           {isEditing ? (
             <div className="space-y-3 nodrag">
               <div className="space-y-1">
@@ -106,7 +106,7 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
                 </label>
                 <input
                   type="text"
-                  className="w-full text-xs font-bold border-none bg-gray-50 p-2 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full text-xs font-bold border-none bg-gray-50 dark:bg-slate-900 dark:text-gray-200 p-2 rounded-md focus:ring-1 focus:ring-blue-500 outline-none"
                   value={localData.label}
                   onChange={(e) =>
                     setLocalData({ ...localData, label: e.target.value })
@@ -122,7 +122,7 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
                 <div className="max-h-[200px] overflow-y-auto space-y-1.5 pr-1">
                   {localData.items.map((item: any, idx: number) => (
                     <div key={idx} className="flex items-center gap-1">
-                      <div className="flex-1 bg-gray-50 border border-gray-100 rounded-md flex items-center px-2">
+                      <div className="flex-1 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-md flex items-center px-2">
                         <GripVertical
                           size={10}
                           className="text-gray-300 mr-1"
@@ -130,13 +130,13 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
                         <input
                           value={item.title}
                           onChange={(e) => updateItemTitle(idx, e.target.value)}
-                          className="flex-1 bg-transparent border-none text-xs py-1.5 focus:ring-0 outline-none"
+                          className="flex-1 bg-transparent border-none text-xs dark:text-gray-200 py-1.5 focus:ring-0 outline-none"
                           placeholder="Item title"
                         />
                       </div>
                       <button
                         onClick={() => removeItem(idx)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -147,7 +147,7 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
                 {localData.items.length < 10 && (
                   <button
                     onClick={addItem}
-                    className="w-full py-1.5 border border-dashed border-gray-300 text-gray-400 text-[10px] font-bold rounded-md flex items-center justify-center gap-1 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all"
+                    className="w-full py-1.5 border border-dashed border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 text-[10px] font-bold rounded-md flex items-center justify-center gap-1 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                   >
                     <Plus size={12} /> ADD ITEM
                   </button>
@@ -166,7 +166,7 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
               className="cursor-text group"
               onDoubleClick={() => setIsEditing(true)}
             >
-              <div className="text-[11px] font-bold text-gray-800 mb-2 truncate group-hover:text-blue-600 transition-colors">
+              <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200 mb-2 truncate group-hover:text-blue-600 transition-colors">
                 {data.label || "Click to set title..."}
               </div>
 
@@ -174,7 +174,7 @@ const ListNode = ({ id, data, selected }: NodeProps) => {
                 {data.items?.map((item: any, idx: number) => (
                   <div
                     key={idx}
-                    className="bg-white border text-xs py-2 px-3 rounded-md shadow-sm text-gray-600 font-medium relative group/item hover:border-blue-200 transition-colors flex justify-between items-center"
+                    className="bg-white dark:bg-slate-800 dark:text-gray-300 border dark:border-slate-600 text-xs py-2 px-3 rounded-md shadow-sm text-gray-600 font-medium relative group/item hover:border-blue-200 transition-colors flex justify-between items-center"
                   >
                     <span className="truncate max-w-[140px]">{item.title}</span>
                     <Handle
