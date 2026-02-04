@@ -177,8 +177,8 @@ export default function TemplatesPage() {
   }, [showSendModal]);
 
   // Fetch Templates
-  const fetchTemplates = async () => {
-    setLoading(true);
+  const fetchTemplates = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [localRes, metaRes, flowsRes] = await Promise.all([
         api.get("/vendor/templates"),
@@ -458,13 +458,13 @@ export default function TemplatesPage() {
               : t
           )
         );
-        fetchTemplates();
+        fetchTemplates(true);
       } else {
         await api.post("/vendor/templates", data, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         toast.success("Template created successfully!");
-        fetchTemplates();
+        fetchTemplates(true);
       }
 
       setShowCreateModal(false);
@@ -489,7 +489,7 @@ export default function TemplatesPage() {
         toast.success("Catalog template created successfully!");
       }
 
-      fetchTemplates();
+      fetchTemplates(true);
       setShowCatalogModal(false);
       setSelectedTemplate(null);
     } catch (error: any) {
@@ -541,7 +541,8 @@ export default function TemplatesPage() {
     try {
       await api.post(`/vendor/templates/${template.id}/submit`);
       toast.success("Template submitted to Meta successfully!");
-      fetchTemplates();
+      setTemplates(prev => prev.map(t => t.id === template.id ? { ...t, status: 'pending' } : t));
+      fetchTemplates(true); // Silent update to ensure full sync
     } catch (error: any) {
       toast.error(formatError(error, "Failed to submit template"));
     } finally {
@@ -555,7 +556,10 @@ export default function TemplatesPage() {
     try {
       const res = await api.post(`/vendor/templates/${id}/sync-status`);
       toast.success(res.data.message || "Status synced successfully");
-      fetchTemplates();
+      if (res.data.status) {
+        setTemplates(prev => prev.map(t => t.id === id ? { ...t, status: res.data.status } : t));
+      }
+      fetchTemplates(true); // Silent update for full consistency
     } catch (error: any) {
       toast.error(formatError(error, "Failed to sync status"));
     } finally {
@@ -581,7 +585,7 @@ export default function TemplatesPage() {
       try {
         await api.delete(`/vendor/templates/meta?name=${encodeURIComponent(deleteConf.metaName)}`);
         toast.success("Template deleted from Meta");
-        fetchTemplates(); // Refresh list to remove it
+        fetchTemplates(true); // Refresh list to remove it
       } catch (error: any) {
         toast.error(formatError(error, "Failed to delete from Meta"));
       } finally {
@@ -1099,95 +1103,59 @@ export default function TemplatesPage() {
 
                         {/* Actions Footer */}
                         <div className="p-3 bg-card border-t border-border/40 flex items-center gap-2">
-                          {t.isMetaOnly ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex-1 h-8 text-xs font-bold text-green-600 bg-green-500/5 hover:bg-green-500/10 hover:text-green-700"
-                                onClick={(e) => handleMetaSend(t, e)}
-                                disabled={importing === (t.id || t.metaTemplateName)}
-                              >
-                                {importing === (t.id || t.metaTemplateName) ? (
-                                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
-                                ) : (
-                                  <Send className="w-3 h-3 mr-1.5" />
-                                )}
-                                Send
-                              </Button>
-                              <div className="w-px h-4 bg-border/60"></div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex-1 h-8 text-xs font-bold text-red-500/80 bg-red-500/5 hover:text-red-600 hover:bg-red-500/10 transition-all"
-                                onClick={(e) => handleMetaDelete(t.metaTemplateName, t.displayName, e)}
-                                disabled={deleting === t.metaTemplateName}
-                              >
-                                {deleting === t.metaTemplateName ? (
-                                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
-                                ) : (
-                                  <Trash2 className="w-3 h-3 mr-1.5" />
-                                )}
-                                Delete
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "flex-1 h-8 text-xs font-bold transition-all",
-                                  t.status === "draft"
-                                    ? "text-blue-600 bg-blue-500/5 hover:bg-blue-500/10"
-                                    : t.status === "approved"
-                                      ? "text-green-600 bg-green-500/5 hover:bg-green-500/10"
-                                      : "text-muted-foreground bg-muted/30 hover:bg-muted/50"
-                                )}
-                                onClick={(e) => {
-                                  if (t.status === "approved") {
-                                    e.stopPropagation();
-                                    openSendModal(t);
-                                  } else if (t.status === "draft" || t.status === "rejected") {
-                                    handleSubmitToMeta(t, e);
-                                  } else {
-                                    handleSyncStatus(t.id, e);
-                                  }
-                                }}
-                                disabled={submitting === t.id || syncing === t.id}
-                              >
-                                {submitting === t.id || syncing === t.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
-                                ) : t.status === "draft" || t.status === "rejected" ? (
-                                  <Upload className="w-3 h-3 mr-1.5" />
-                                ) : t.status === "approved" ? (
-                                  <Send className="w-3 h-3 mr-1.5" />
-                                ) : (
-                                  <RefreshCw className="w-3 h-3 mr-1.5" />
-                                )}
-                                {t.status === "draft" || t.status === "rejected"
-                                  ? "Submit"
-                                  : t.status === "approved"
-                                    ? "Send"
-                                    : "Sync"}
-                              </Button>
-                              <div className="w-px h-4 bg-border/60"></div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex-1 h-8 text-xs font-bold text-red-500/80 bg-red-500/5 hover:text-red-600 hover:bg-red-500/10 transition-all font-bold"
-                                onClick={(e) => handleDelete(t, e)}
-                                disabled={deleting === t.id}
-                              >
-                                {deleting === t.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
-                                ) : (
-                                  <Trash2 className="w-3 h-3 mr-1.5" />
-                                )}
-                                Delete
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "flex-1 h-8 text-xs font-bold transition-all",
+                              t.status === "draft"
+                                ? "text-blue-600 bg-blue-500/5 hover:bg-blue-500/10"
+                                : t.status === "approved"
+                                  ? "text-green-600 bg-green-500/5 hover:bg-green-500/10"
+                                  : "text-muted-foreground bg-muted/30 hover:bg-muted/50"
+                            )}
+                            onClick={(e) => {
+                              if (t.status === "approved") {
+                                e.stopPropagation();
+                                openSendModal(t);
+                              } else if (t.status === "draft") {
+                                handleSubmitToMeta(t, e);
+                              } else {
+                                handleSyncStatus(t.id, e);
+                              }
+                            }}
+                            disabled={!!syncing || !!submitting}
+                          >
+                            {syncing === t.id || submitting === t.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin mr-1.5" />
+                            ) : t.status === "draft" ? (
+                              <Upload className="w-3 h-3 mr-1.5" />
+                            ) : t.status === "approved" ? (
+                              <Send className="w-3 h-3 mr-1.5" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3 mr-1.5" />
+                            )}
+                            {t.status === "draft"
+                              ? "Submit"
+                              : t.status === "approved"
+                                ? "Send"
+                                : "Sync"}
+                          </Button>
+                          <div className="w-px h-4 bg-border/60"></div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 h-8 text-xs font-bold text-red-500/80 bg-red-500/5 hover:text-red-600 hover:bg-red-500/10 transition-all font-bold"
+                            onClick={(e) => handleDelete(t, e)}
+                            disabled={!!deleting}
+                          >
+                            {deleting === t.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin mr-1.5" />
+                            ) : (
+                              <Trash2 className="w-3 h-3 mr-1.5" />
+                            )}
+                            Delete
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

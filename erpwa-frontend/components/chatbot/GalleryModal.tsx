@@ -108,26 +108,37 @@ export default function GalleryModal({
 
     try {
       setUploading(true);
-
       const { file: processedFile } = await processMedia(file);
 
       const formData = new FormData();
-      formData.append("file", file);
-      // Pass category context if selected
+      formData.append("images", processedFile); // Backend expects 'images'
+
       if (selectedCategory)
         formData.append("category_id", selectedCategory.toString());
       if (selectedSubcategory)
         formData.append("subcategory_id", selectedSubcategory.toString());
 
-      await api.post("/gallery/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await galleryAPI.upload(formData, true);
 
-      // Refresh list
+      toast.success("Image uploaded successfully!");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      // 🔥 Auto-select and close for single-select mode
+      const uploadedImage = res.data?.images?.[0];
+      const imageUrl = uploadedImage?.url || uploadedImage?.s3_url;
+
+      if (imageUrl && !multiSelect) {
+        onSelect(imageUrl);
+        onClose();
+        return;
+      }
+
       setPage(1);
       fetchImages(1, true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed", error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Failed to upload image.";
+      toast.error(errorMsg);
     } finally {
       setUploading(false);
     }
@@ -189,7 +200,7 @@ export default function GalleryModal({
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[75vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -267,7 +278,7 @@ export default function GalleryModal({
             ) : (
               <Upload size={18} />
             )}
-            Upload Image
+            Upload from Device
           </button>
           <input
             type="file"
