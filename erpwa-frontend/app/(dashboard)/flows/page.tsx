@@ -493,7 +493,7 @@ export default function FlowsPage() {
                     </div>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => router.push("/admin/flows/responses")}
+                            onClick={() => router.push("/flows/responses")}
                             className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-lg font-medium transition-colors"
                             title="View All Flow Responses"
                         >
@@ -501,7 +501,7 @@ export default function FlowsPage() {
                             Responses
                         </button>
                         <button
-                            onClick={() => router.push("/admin/flows/metrics")}
+                            onClick={() => router.push("/flows/metrics")}
                             className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-lg font-medium transition-colors"
                             title="View Flow Metrics"
                         >
@@ -666,7 +666,7 @@ export default function FlowsPage() {
                                             <div className="grid grid-cols-2 gap-4 mb-4 py-4 border-t border-b border-border">
                                                 <div
                                                     className="cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
-                                                    onClick={() => router.push(`/admin/flows/responses?flowId=${flow.id}`)}
+                                                    onClick={() => router.push(`/flows/responses?flowId=${flow.id}`)}
                                                     title="View Responses"
                                                 >
                                                     <p className="text-xs text-muted-foreground flex items-center gap-1">

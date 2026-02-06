@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/card";
 import { Button } from "@/components/button";
@@ -33,7 +33,6 @@ import {
   Users,
   Eye,
   ShoppingBag,
-  Workflow,
   LayoutGrid,
   BookTemplate,
 } from "lucide-react";
@@ -97,6 +96,7 @@ type Template = {
 
 export default function TemplatesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -137,9 +137,8 @@ export default function TemplatesPage() {
 
   const [headerFile, setHeaderFile] = useState<File | null>(null);
   const [headerPreview, setHeaderPreview] = useState<string | null>(null);
-  const [flows, setFlows] = useState<any[]>([]);
   const [buttons, setButtons] = useState<
-    { type: string; text: string; value?: string; flowId?: string; flowAction?: string }[]
+    { type: string; text: string; value?: string }[]
   >([]);
 
   // --- Catalog Template Modal State ---
@@ -180,15 +179,10 @@ export default function TemplatesPage() {
   const fetchTemplates = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [localRes, metaRes, flowsRes] = await Promise.all([
+      const [localRes, metaRes] = await Promise.all([
         api.get("/vendor/templates"),
-        api.get("/vendor/templates/meta").catch(() => ({ data: [] })),
-        api.get("/whatsapp/flows").catch(() => ({ data: { flows: [] } }))
+        api.get("/vendor/templates/meta").catch(() => ({ data: [] }))
       ]);
-
-      if (flowsRes.data?.flows) {
-        setFlows(flowsRes.data.flows);
-      }
 
       const localTemplates = localRes.data;
       const metaRaw = metaRes.data || [];
@@ -279,6 +273,33 @@ export default function TemplatesPage() {
     fetchTemplates();
   }, []);
 
+  // Handle URL parameters for create/edit/send from Flows page
+  useEffect(() => {
+    if (loading) return; // Wait for templates to load
+
+    const createParam = searchParams.get("create");
+    const editParam = searchParams.get("edit");
+    const sendParam = searchParams.get("send");
+
+    if (createParam === "true") {
+      openCreateModal();
+      // Clear the URL params
+      router.replace("/admin/templates");
+    } else if (editParam) {
+      const template = templates.find((t) => t.id === editParam);
+      if (template) {
+        openEditModal(template);
+      }
+      router.replace("/admin/templates");
+    } else if (sendParam) {
+      const template = templates.find((t) => t.id === sendParam);
+      if (template) {
+        openSendModal(template);
+      }
+      router.replace("/admin/templates");
+    }
+  }, [searchParams, templates, loading]);
+
   // --- Create/Edit Handlers ---
 
   const resetForm = () => {
@@ -330,10 +351,7 @@ export default function TemplatesPage() {
         template.buttons.map((b: any) => ({
           type: b.type,
           text: b.text,
-          value: b.value || "",
-          flowId: b.flowId,
-          flowAction: b.flowAction,
-          navigateScreen: b.navigateScreen || b.value || "" // Include navigateScreen
+          value: b.value || ""
         }))
       );
     } else {
@@ -367,7 +385,7 @@ export default function TemplatesPage() {
     setFormData({ ...formData, body: formData.body + ` {{${varCount}}} ` });
   };
 
-  const addButton = (type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "FLOW") => {
+  const addButton = (type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER") => {
     if (buttons.length >= 3) return toast.info("Max 3 buttons allowed");
     setButtons([...buttons, { type, text: "", value: "" }]);
   };
@@ -381,12 +399,6 @@ export default function TemplatesPage() {
   const updateButton = (index: number, key: string, val: string) => {
     const newButtons = [...buttons];
     (newButtons[index] as any)[key] = val;
-
-    // For Flow buttons, keep navigateScreen in sync with value
-    if ((newButtons[index] as any).type === "FLOW" && key === "value") {
-      (newButtons[index] as any).navigateScreen = val;
-    }
-
     setButtons(newButtons);
   };
 
@@ -442,17 +454,6 @@ export default function TemplatesPage() {
         data.append(`buttons[${index}][text]`, btn.text);
         if (btn.value) {
           data.append(`buttons[${index}][value]`, btn.value);
-        }
-        if (btn.type === "FLOW") {
-          if (btn.flowId) data.append(`buttons[${index}][flowId]`, btn.flowId);
-          // Ensure flowAction is sent, default to navigate
-          const action = btn.flowAction || "navigate";
-          data.append(`buttons[${index}][flowAction]`, action);
-
-          // Also explicitly send navigateScreen if inferred from value 
-          if (btn.value) {
-            data.append(`buttons[${index}][navigateScreen]`, btn.value);
-          }
         }
       });
 
@@ -2100,14 +2101,7 @@ export default function TemplatesPage() {
                           >
                             + Phone
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[10px]"
-                            onClick={() => addButton("FLOW")}
-                          >
-                            + Flow
-                          </Button>
+
                         </div>
                       </div>
 
@@ -2134,9 +2128,7 @@ export default function TemplatesPage() {
                                   {btn.type === "PHONE_NUMBER" && (
                                     <Phone className="w-3 h-3" />
                                   )}
-                                  {btn.type === "FLOW" && (
-                                    <Workflow className="w-3 h-3" />
-                                  )}
+
                                   {btn.type === "QUICK_REPLY" && (
                                     <CheckCircle className="w-3 h-3" />
                                   )}
@@ -2167,66 +2159,7 @@ export default function TemplatesPage() {
                                   />
                                 )}
 
-                              {btn.type === "FLOW" && (
-                                <div className="flex flex-col gap-2 mt-2">
-                                  <select
-                                    className="h-8 text-sm border rounded px-2 w-full bg-background"
-                                    value={btn.flowId || ""}
-                                    onChange={(e) => {
-                                      const selectedId = e.target.value;
-                                      const newButtons = [...buttons];
 
-                                      // 1. Update Flow ID
-                                      (newButtons[idx] as any).flowId = selectedId;
-
-                                      // 2. Auto-fetch logic
-                                      const flow = flows.find((f) => f.id === selectedId);
-                                      if (flow) {
-                                        (newButtons[idx] as any).flowAction = "navigate";
-
-                                        // Smart fetch: Try getting actual first screen from JSON
-                                        let startScreen = "START";
-                                        try {
-                                          if ((flow as any).flowJson) {
-                                            const json = typeof (flow as any).flowJson === 'string'
-                                              ? JSON.parse((flow as any).flowJson)
-                                              : (flow as any).flowJson;
-
-                                            if (json.screens && json.screens.length > 0) {
-                                              startScreen = json.screens[0].id;
-                                              console.log(`✅ Auto-fetched first screen from flowJson: ${startScreen}`);
-                                            }
-                                          } else if ((flow as any).preview?.first_screen) {
-                                            startScreen = (flow as any).preview.first_screen;
-                                            console.log(`✅ Auto-fetched first screen from preview: ${startScreen}`);
-                                          }
-                                        } catch (e) {
-                                          console.warn("Could not auto-fetch screen ID", e);
-                                        }
-
-                                        console.log(`🔧 Setting Flow button screen ID to: ${startScreen}`);
-                                        (newButtons[idx] as any).value = startScreen;
-                                        (newButtons[idx] as any).navigateScreen = startScreen;
-                                      }
-
-                                      setButtons(newButtons);
-                                    }}
-                                  >
-                                    <option value="">Select Flow</option>
-                                    {flows.map((f) => (
-                                      <option key={f.id} value={f.id}>
-                                        {f.name} ({f.status})
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <Input
-                                    className="h-8 text-sm"
-                                    placeholder="Screen ID (e.g. WELCOME)"
-                                    value={btn.value}
-                                    onChange={(e) => updateButton(idx, "value", e.target.value)}
-                                  />
-                                </div>
-                              )}
                             </div>
                             <Button
                               variant="ghost"
