@@ -649,6 +649,10 @@ function ChatArea({
           onReply={(m) => setReplyTo(m)}
           setInputValue={setInputValue}
           inputRef={inputRef}
+          // Pagination: Currently we load all messages at once
+          hasMore={false}
+          loadingMore={false}
+          onLoadMore={() => {}}
         />
       </div>
 
@@ -925,18 +929,7 @@ export default function InboxPage() {
   /* =======================
      SELECT CONVERSATION
   ======================= */
-  const handleSelectConversation = async (id: string) => {
-    // Update URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("chatId", id);
-    router.replace(`${pathname}?${params.toString()}`);
-
-    readSentRef.current.delete(id);
-
-    setMessages([]);
-    setSelectedConversation(id);
-    setShowChat(true);
-
+  const fetchConversationData = async (id: string) => {
     try {
       const res = await api.get(`/inbox/${id}`);
 
@@ -1003,6 +996,24 @@ export default function InboxPage() {
     }
   };
 
+  /* =======================
+     SELECT CONVERSATION
+  ======================= */
+  const handleSelectConversation = async (id: string) => {
+    // Update URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("chatId", id);
+    router.replace(`${pathname}?${params.toString()}`);
+
+    readSentRef.current.delete(id);
+
+    setMessages([]);
+    setSelectedConversation(id);
+    setShowChat(true);
+
+    await fetchConversationData(id);
+  };
+
   // ✅ Update conversation's last message status in real-time
   const handleUpdateConversationStatus = (
     conversationId: string,
@@ -1055,7 +1066,8 @@ export default function InboxPage() {
   useEffect(() => {
     loadInbox();
     if (chatId) {
-      handleSelectConversation(chatId);
+      readSentRef.current.delete(chatId);
+      fetchConversationData(chatId);
     }
   }, []);
 
