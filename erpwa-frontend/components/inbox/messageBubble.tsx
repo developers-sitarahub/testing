@@ -69,7 +69,7 @@ function AudioPlayer({ mediaUrl }: { mediaUrl: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 min-w-[250px]">
+    <div className="flex items-center gap-2 px-3 py-2 min-w-62.5">
       {/* Play/Pause Button */}
       <button
         onClick={togglePlay}
@@ -281,9 +281,11 @@ export default function MessageBubble({
     >
       <div
         className={`flex flex-col gap-1
-        ${isImage || isVideo ? "w-fit" : "max-w-[70%] sm:max-w-[60%] md:max-w-[50%] lg:max-w-[40%] xl:max-w-[35%]"}
-        ${
-          msg.outboundPayload?.interactive || msg.template?.buttons
+        ${(isImage || isVideo) ? 'w-fit' :
+            (msg.template?.header?.type === 'IMAGE' || msg.template?.header?.type === 'VIDEO')
+              ? 'w-fit max-w-70'
+              : 'max-w-[70%] sm:max-w-[60%] md:max-w-[50%] lg:max-w-[40%] xl:max-w-[35%]'}
+        ${msg.outboundPayload?.interactive || msg.template?.buttons
             ? "min-w-[200px]"
             : isImage || isVideo
               ? ""
@@ -331,7 +333,7 @@ export default function MessageBubble({
                   <video
                     src={msg.template.header.mediaUrl}
                     controls
-                    className="w-full h-[180px] object-cover"
+                    className="w-full h-45 object-cover"
                   />
                 )}
               {msg.template.header.type === "DOCUMENT" &&
@@ -375,7 +377,7 @@ export default function MessageBubble({
           >
             {/* IMAGE MESSAGE - WhatsApp Style */}
             {isImage && effectiveMediaUrl && (
-              <div className="w-fit max-w-[300px]">
+              <div className="w-fit max-w-75">
                 {/* Image container with padding to create border effect */}
                 <div className="p-1">
                   <Image
@@ -417,7 +419,7 @@ export default function MessageBubble({
 
             {/* VIDEO MESSAGE - WhatsApp Style */}
             {isVideo && effectiveMediaUrl && (
-              <div className="w-fit max-w-[300px]">
+              <div className="w-fit max-w-75">
                 {/* Video container with padding to create border effect */}
                 <div className="p-1">
                   <video
@@ -718,37 +720,45 @@ export default function MessageBubble({
                   </button>
                 )}
 
-                <div
-                  className="flex overflow-x-auto gap-2 pb-2 snap-x snap-mandatory scrollbar-none scroll-smooth px-1"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                  id={`carousel-${msg.id}`}
-                >
-                  {cards.map((card, idx) => (
-                    <div
-                      key={idx}
-                      className="shrink-0 w-[205px] snap-start flex flex-col gap-1"
-                    >
-                      {/* Card Bubble - Image + Text */}
-                      <div className="bg-wa-outbound rounded-lg overflow-hidden">
-                        {/* Card Image with padding (green border effect) */}
-                        {(card.mediaUrl || card.s3Url) && (
-                          <div className="p-0.5">
-                            <div className="relative w-full aspect-square rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
-                              {card.mimeType?.startsWith("video") ? (
-                                <video
-                                  src={card.mediaUrl || card.s3Url}
-                                  className="w-full h-full object-cover"
-                                  controls={false}
-                                />
-                              ) : (
-                                <Image
-                                  src={card.mediaUrl || card.s3Url || ""}
-                                  alt={card.title || "Card Image"}
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              )}
+                  <div
+                    className="flex overflow-x-auto gap-2 pb-2 snap-x snap-mandatory scrollbar-none scroll-smooth px-1"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    id={`carousel-${msg.id}`}
+                  >
+                    {cards.map((card, idx) => (
+                      <div
+                        key={idx}
+                        className="shrink-0 w-52 snap-start flex flex-col gap-1"
+                      >
+                        {/* Card Bubble - Image + Text */}
+                        <div className="bg-wa-outbound rounded-lg overflow-hidden">
+                          {/* Card Image with padding (green border effect) */}
+                          {(card.mediaUrl || card.s3Url) && (
+                            <div className="p-0.5">
+                              <div className="relative w-full aspect-square rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                {card.mimeType?.startsWith("video") ? (
+                                  <video
+                                    src={card.mediaUrl || card.s3Url}
+                                    className="w-full h-full object-cover"
+                                    controls={false}
+                                  />
+                                ) : (
+                                  <img
+                                    src={card.mediaUrl || card.s3Url}
+                                    alt={card.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Card Text (Body) */}
+                          {card.title && (
+                            <div className="px-2 py-1">
+                              <p className="text-[12px] text-gray-900 dark:text-gray-100 break-words whitespace-pre-wrap leading-[16px] line-clamp-2">
+                                {card.title}
+                              </p>
                             </div>
                           </div>
                         )}
