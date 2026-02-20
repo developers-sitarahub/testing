@@ -279,6 +279,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-3 font-medium rounded-tl-md">User / Action Initiator</th>
                         <th className="px-6 py-3 font-medium">Type</th>
                         <th className="px-6 py-3 font-medium">Interaction Details</th>
+                        <th className="px-6 py-3 font-medium">Delivery Stats</th>
                         <th className="px-6 py-3 font-medium text-right rounded-tr-md">Time</th>
                       </tr>
                     </thead>
@@ -311,6 +312,17 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-muted-foreground break-words min-w-[200px] max-w-[400px]">
                             {activity.action}
+                          </td>
+                          <td className="px-6 py-4">
+                            {activity.stats ? (
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-green-600 font-medium">Sent: {activity.stats.sent}</span>
+                                <span className="text-red-500 font-medium">Failed: {activity.stats.failed}</span>
+                                <span className="text-muted-foreground font-medium">Total: {activity.stats.total}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
                           </td>
                           <td className="px-6 py-4 text-muted-foreground text-right whitespace-nowrap">
                             {activity.time}

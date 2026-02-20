@@ -157,10 +157,12 @@ export default function TemplateSendModal({ isOpen, onClose, template }: Props) 
                 if (typeof errObj === "string") {
                     firstError = errObj;
                 } else if (errObj) {
+                    const details = errObj.error_data?.details ? ` - ${errObj.error_data.details}` : "";
                     firstError = errObj.error_user_msg || errObj.message || "Unknown error";
                     if (errObj.error_user_title) {
                         firstError = `${errObj.error_user_title}: ${firstError}`;
                     }
+                    firstError += details;
                 }
 
                 if (failed.length === results.length) {

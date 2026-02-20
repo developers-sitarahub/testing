@@ -59,7 +59,19 @@ export const getDashboardStats = async (req, res) => {
         const convertedLeads = leadsStatusCount.find((s) => s.status === "converted")?._count.status || 0;
         const conversionRate = leadsCount > 0 ? Math.round((convertedLeads / leadsCount) * 100) : 0;
 
-        // 2. Get recent campaign activities
+        // Prepare status breakdown with all essential statuses initialized
+        const statusBreakdown = { new: 0, contacted: 0, qualified: 0, converted: 0, lost: 0 };
+        leadsStatusCount.forEach((item) => {
+            if (item.status) {
+                // To safely handle unexpected custom statuses, initialize them if they don't exist
+                if (statusBreakdown[item.status] === undefined && item.status !== '') {
+                    statusBreakdown[item.status] = 0;
+                }
+                statusBreakdown[item.status] = item._count.status;
+            }
+        });
+
+        // 2. Get recent campaign activities ONLY
         const recentCampaigns = await prisma.campaign.findMany({
             where: {
                 vendorId,
@@ -77,7 +89,7 @@ export const getDashboardStats = async (req, res) => {
                 failedMessages: true
             },
             orderBy: { createdAt: "desc" },
-            take: 10,
+            take: 15,
         });
 
         const campaignUserIds = [...new Set(recentCampaigns.map(c => c.createdBy).filter(Boolean))];
@@ -89,55 +101,6 @@ export const getDashboardStats = async (req, res) => {
             acc[u.id] = u.name;
             return acc;
         }, {});
-
-        // 3. Get recent messages (templates or inbound)
-        const recentMessages = await prisma.message.findMany({
-            where: {
-                vendorId,
-                OR: [
-                    { direction: 'inbound' },
-                    { direction: 'outbound', messageType: 'template' }
-                ],
-                // If sales, filter to leads they own
-                ...(user.role === 'sales' ? {
-                    conversation: { lead: { salesPersonName: user.name } }
-                } : {}),
-            },
-            select: {
-                id: true,
-                direction: true,
-                messageType: true,
-                status: true,
-                createdAt: true,
-                sender: { select: { name: true } },
-                conversation: {
-                    select: {
-                        lead: { select: { companyName: true, phoneNumber: true } }
-                    }
-                }
-            },
-            orderBy: { createdAt: "desc" },
-            take: 15,
-        });
-
-        // 4. Get active 24h sessions
-        const recentSessions = await prisma.conversation.findMany({
-            where: {
-                vendorId,
-                sessionStartedAt: { not: null },
-                sessionExpiresAt: { gt: new Date() },
-                ...(user.role === 'sales' ? {
-                    lead: { salesPersonName: user.name }
-                } : {})
-            },
-            select: {
-                id: true,
-                sessionStartedAt: true,
-                lead: { select: { companyName: true, phoneNumber: true } }
-            },
-            orderBy: { sessionStartedAt: "desc" },
-            take: 10,
-        });
 
         // Merge and format activities
         const events = [];
@@ -159,45 +122,24 @@ export const getDashboardStats = async (req, res) => {
             }
 
             const actionText = `[Status: ${displayStatus}] ${campTypeStr}: ${camp.name || 'Unnamed'}`;
-            events.push({ member: memberName, type: campTypeStr, action: actionText, time: camp.createdAt });
-        });
-
-        recentMessages.forEach((msg) => {
-            if (msg.direction !== 'inbound') return; // Skip outbounds for this view
-            const leadName = msg.conversation?.lead?.companyName || msg.conversation?.lead?.phoneNumber || "unknown user";
-            let actionText = `Received an inbound message from ${leadName}`;
-            const memberName = leadName; // If inbound, the member initiating is the lead
-            
-            events.push({ member: memberName, type: "Message", action: actionText, time: msg.createdAt });
-        });
-
-        recentSessions.forEach((session) => {
-            const leadName = session.lead?.companyName || session.lead?.phoneNumber || "unknown user";
-            events.push({
-                member: "System",
-                type: "Chat Session",
-                action: `Ready for 24-hour window chat with ${leadName}`,
-                time: session.sessionStartedAt,
+            events.push({ 
+                member: memberName, 
+                type: campTypeStr, 
+                action: actionText, 
+                time: camp.createdAt,
+                stats: { sent: camp.sentMessages, failed: camp.failedMessages, total: camp.totalMessages }
             });
         });
 
-        // Sort all events descending by time
-        events.sort((a, b) => new Date(b.time) - new Date(a.time));
-
         // Format final list (top 15)
-        const activities = events.slice(0, 15).map((act, index) => ({
+        const activities = events.map((act, index) => ({
             id: `act_${index}_${new Date(act.time).getTime()}`,
             member: act.member,
             type: act.type || "System Event",
             action: act.action,
+            stats: act.stats,
             time: formatTimeAgo(new Date(act.time)),
         }));
-
-        // Prepare status breakdown
-        const statusBreakdown = leadsStatusCount.reduce((acc, item) => {
-            acc[item.status] = item._count.status;
-            return acc;
-        }, {});
 
         res.json({
             stats: {

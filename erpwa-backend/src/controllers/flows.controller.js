@@ -1125,6 +1125,7 @@ export const handleFlowEndpoint = async (req, res) => {
             }
 
             responsePayload = {
+                version: decryptedData.version || "3.0",
                 screen: startScreenId,
                 data: {
                     // Return any initial data needed by the form
@@ -1329,6 +1330,7 @@ export const handleFlowEndpoint = async (req, res) => {
                     };
                 }
                 responsePayload = {
+                    version: decryptedData.version || "3.0",
                     screen: nextScreen,
                     data: responseData
                 };
@@ -1338,9 +1340,28 @@ export const handleFlowEndpoint = async (req, res) => {
             // Meta sends this when an error occurs like 'invalid-screen-transition'
             // We should just acknowledge it to prevent 'Something went wrong' generic error
             console.warn('⚠️ Received client validation report:', decryptedData.data);
+            
+            try {
+                const vendor = await prisma.vendor.findFirst({
+                    where: { whatsappFlowsPrivateKey: { not: null } }
+                });
+                if (vendor) {
+                    await prisma.activityLog.create({
+                        data: {
+                            vendorId: vendor.id,
+                            type: 'flow_endpoint_hit',
+                            status: 'failed',
+                            event: 'client_validation_error',
+                            payload: decryptedData.data,
+                            whatsappBusinessId: vendor.whatsappBusinessId
+                        }
+                    });
+                }
+            } catch(e) { console.error("Could not log validation error", e); }
 
             // Return empty SUCCESS or similar to appease the client
             responsePayload = {
+                version: decryptedData.version || "3.0",
                 data: {
                     acknowledged: true
                 }
@@ -1348,7 +1369,10 @@ export const handleFlowEndpoint = async (req, res) => {
         } else {
             console.warn('Unknown Flow Action:', action);
             // Return fallback
-            responsePayload = { data: {} };
+            responsePayload = { 
+                version: decryptedData.version || "3.0",
+                data: {} 
+            };
         }
 
         console.log("📤 Sending Response Payload:", JSON.stringify(responsePayload, null, 2));
