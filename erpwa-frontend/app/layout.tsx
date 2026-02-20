@@ -10,8 +10,18 @@ import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ERPWA",
-  description: "Enterprise Resource Planning & WhatsApp Automation",
+  title: "GPSERP - WhatsApp Automation & ERP",
+  description:
+    "Enterprise Resource Planning & WhatsApp Automation. Unlock native flows, dual workflow engines, and interactive catalogs.",
+  keywords:
+    "GPSERP, WhatsApp Automation, ERP, CRM, WhatsApp Business API, Lead Management",
+  openGraph: {
+    title: "GPSERP - WhatsApp Automation & ERP",
+    description:
+      "The complete toolkit for modern businesses to scale their messaging on WhatsApp.",
+    siteName: "GPSERP",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

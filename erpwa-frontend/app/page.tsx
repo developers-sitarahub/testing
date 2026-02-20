@@ -18,6 +18,8 @@ import {
 import { useAuth } from "@/context/authContext";
 import { Logo } from "@/components/logo";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { TestimonialsSection } from "@/components/testimonials";
+import { Typewriter } from "@/components/magicui/typewriter";
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -62,7 +64,7 @@ export default function LandingPage() {
               </Link>
             ) : (
               <Link href="/login">
-                <button className="relative px-6 py-2.5 rounded-full bg-slate-100 text-slate-950 hover:bg-white transition-all text-sm font-bold shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_-5px_rgba(255,255,255,0.5)] cursor-pointer overflow-hidden group">
+                <button className="relative px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-slate-100 text-slate-950 hover:bg-white transition-all text-xs sm:text-sm font-bold shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_-5px_rgba(255,255,255,0.5)] cursor-pointer overflow-hidden group">
                   <span className="relative z-10 flex items-center gap-2">
                     Get Started
                   </span>
@@ -92,12 +94,12 @@ export default function LandingPage() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
               <span className="text-sm font-medium text-slate-300">
-                v2.0 is now live
+                v1.0 is now live
               </span>
-              <span className="w-px h-4 bg-white/10 mx-1" />
-              <span className="text-sm font-medium text-purple-300 flex items-center gap-1">
+              {/* <span className="w-px h-4 bg-white/10 mx-1" /> */}
+              {/* <span className="text-sm font-medium text-purple-300 flex items-center gap-1">
                 See what&apos;s new <ArrowRight className="w-3 h-3" />
-              </span>
+              </span> */}
             </div>
           </motion.div>
 
@@ -105,9 +107,13 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
-            className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-[1.1]"
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-[1.1] px-2"
           >
-            Connect on <br className="hidden md:block" />
+            <Typewriter
+              texts={["Connect on", "Business on", "Work on", "Manage your"]}
+              className="mr-3 sm:mr-4 md:mr-5"
+            />
+            <br className="hidden md:block" />
             <span className="relative inline-block">
               <span className="absolute -inset-2 bg-linear-to-r from-green-500/20 to-blue-500/20 blur-2xl rounded-full" />
               <span className="relative bg-clip-text text-transparent bg-linear-to-r from-green-400 via-blue-400 to-purple-400 animate-gradient-x">
@@ -121,7 +127,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg md:text-xl text-slate-400 mb-10 md:mb-12 max-w-2xl mx-auto leading-relaxed px-4 md:px-0"
           >
             Unlock the power of native flows, dual workflow engines, and
             interactive catalogs. The complete toolkit for modern businesses to
@@ -132,14 +138,17 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 px-6 sm:px-0"
           >
-            <Link href={user ? "/dashboard" : "/login"}>
-              <button className="h-14 px-8 rounded-full bg-white text-slate-950 font-bold text-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
+            <Link
+              href={user ? "/dashboard" : "/login"}
+              className="w-full sm:w-auto"
+            >
+              <button className="w-full sm:w-auto h-14 px-8 rounded-full bg-white text-slate-950 font-bold text-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
                 Start for free <Zap className="w-5 h-5 fill-slate-950" />
               </button>
             </Link>
-            <button className="h-14 px-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-lg font-bold transition-all flex items-center gap-3 cursor-pointer backdrop-blur-sm group">
+            <button className="w-full sm:w-auto h-14 px-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-lg font-bold transition-all flex items-center justify-center gap-3 cursor-pointer backdrop-blur-sm group">
               Watch Demo
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                 <span className="ml-0.5 text-xs">▶</span>
@@ -167,12 +176,12 @@ export default function LandingPage() {
               Native WhatsApp Superpowers
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Don&apos;t just send text. Create interactive experiences. ERPWA
+              Don&apos;t just send text. Create interactive experiences. GPSERP
               gives you access to the full Meta Business API suite.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <SpotlightCard
               icon={<Layers className="w-8 h-8 text-blue-400" />}
               title="Native Flows"
@@ -218,7 +227,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-linear-to-b from-slate-950 via-purple-950/20 to-slate-950 pointer-events-none" />
 
         <div className="container mx-auto max-w-6xl relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -294,50 +303,60 @@ export default function LandingPage() {
 
                 <div className="flex-1 relative p-8">
                   {/* Mock Nodes */}
-                  <div className="absolute top-12 left-12 p-4 bg-slate-800 rounded-xl border border-white/10 shadow-lg w-48 z-10">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                        <MessageSquare className="w-4 h-4 text-green-400" />
+                  <div className="absolute top-[8%] left-[8%] sm:top-12 sm:left-12 p-3 sm:p-4 bg-slate-800 rounded-xl border border-white/10 shadow-lg w-36 sm:w-48 z-10">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
                       </div>
-                      <span className="font-bold text-sm">Inbound Message</span>
+                      <span className="font-bold text-xs sm:text-sm">
+                        Inbound Message
+                      </span>
                     </div>
-                    <div className="h-1.5 w-full bg-white/5 rounded-full" />
+                    <div className="h-1 sm:h-1.5 w-full bg-white/5 rounded-full" />
                   </div>
 
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-4 bg-slate-800 rounded-xl border border-purple-500/30 shadow-lg w-48 z-20 shadow-purple-900/20">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <Bot className="w-4 h-4 text-purple-400" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-3 sm:p-4 bg-slate-800 rounded-xl border border-purple-500/30 shadow-lg w-36 sm:w-48 z-20 shadow-purple-900/20">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
+                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
                       </div>
-                      <span className="font-bold text-sm">AI Auto-Reply</span>
+                      <span className="font-bold text-xs sm:text-sm">
+                        AI Auto-Reply
+                      </span>
                     </div>
-                    <div className="h-1.5 w-2/3 bg-white/5 rounded-full mb-2" />
-                    <div className="h-1.5 w-1/2 bg-white/5 rounded-full" />
+                    <div className="h-1 sm:h-1.5 w-2/3 bg-white/5 rounded-full mb-1.5 sm:mb-2" />
+                    <div className="h-1 sm:h-1.5 w-1/2 bg-white/5 rounded-full" />
                   </div>
 
-                  <div className="absolute bottom-12 right-12 p-4 bg-slate-800 rounded-xl border border-white/10 shadow-lg w-48 z-10">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                        <Workflow className="w-4 h-4 text-blue-400" />
+                  <div className="absolute bottom-[8%] right-[8%] sm:bottom-12 sm:right-12 p-3 sm:p-4 bg-slate-800 rounded-xl border border-white/10 shadow-lg w-36 sm:w-48 z-10">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                        <Workflow className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
                       </div>
-                      <span className="font-bold text-sm">Update CRM</span>
+                      <span className="font-bold text-xs sm:text-sm">
+                        Update CRM
+                      </span>
                     </div>
-                    <div className="h-1.5 w-full bg-white/5 rounded-full" />
+                    <div className="h-1 sm:h-1.5 w-full bg-white/5 rounded-full" />
                   </div>
 
                   {/* Connecting Spline Lines */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-50">
+                  <svg
+                    viewBox="0 0 500 500"
+                    preserveAspectRatio="none"
+                    className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-50"
+                  >
                     <path
-                      d="M 120 100 C 120 200, 250 150, 250 250"
+                      d="M 120 100 C 120 250, 250 150, 250 250"
                       stroke="url(#linegrad1)"
-                      strokeWidth="2"
+                      strokeWidth="3"
                       fill="none"
                       className="animate-dash"
                     />
                     <path
-                      d="M 350 300 C 350 350, 420 350, 420 420"
+                      d="M 250 250 C 250 350, 380 250, 380 400"
                       stroke="url(#linegrad2)"
-                      strokeWidth="2"
+                      strokeWidth="3"
                       fill="none"
                       className="animate-dash [animation-delay:0.5s]"
                     />
@@ -392,7 +411,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-md md:max-w-4xl lg:max-w-none mx-auto">
             <PricingCard
               title="Starter"
               price="$29"
@@ -442,12 +461,15 @@ export default function LandingPage() {
                 "Custom Volume Discounts",
               ]}
               buttonText="Contact Sales"
-              href="mailto:sales@erpwa.com"
+              href="mailto:sales@gpserp.com"
               delay={0.2}
             />
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      <TestimonialsSection />
 
       {/* Footer */}
       <footer className="py-16 border-t border-white/5 bg-slate-950 text-sm">
@@ -525,14 +547,20 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-500">
-            <div>&copy; 2026 ERPWA. All rights reserved.</div>
+            <div>&copy; 2026 GPSERP. All rights reserved.</div>
             <div className="flex gap-8">
-              <a href="#" className="hover:text-white transition-colors">
+              <Link
+                href="/privacy-policy"
+                className="hover:text-white transition-colors"
+              >
                 Privacy Policy
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
+              </Link>
+              <Link
+                href="/terms-n-condition"
+                className="hover:text-white transition-colors"
+              >
                 Terms of Service
-              </a>
+              </Link>
             </div>
           </div>
         </div>
