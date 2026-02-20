@@ -73,35 +73,7 @@ function KPICard({ title, value, change, trend, icon, description, index, color 
   )
 }
 
-function TeamActivity({
-  member,
-  action,
-  time,
-  index,
-}: {
-  member: string
-  action: string
-  time: string
-  index: number
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
-      whileHover={{ backgroundColor: "var(--muted)" }}
-      className="px-6 py-4 border-b border-border last:border-b-0 cursor-pointer transition-colors"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">{member}</p>
-          <p className="text-xs text-muted-foreground truncate mt-1">{action}</p>
-        </div>
-        <span className="text-xs text-muted-foreground flex-shrink-0">{time}</span>
-      </div>
-    </motion.div>
-  )
-}
+
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
@@ -300,10 +272,53 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="p-0">
               {activities.length > 0 ? (
-                <div className="max-h-96 overflow-y-auto">
-                  {activities.map((activity, i) => (
-                    <TeamActivity key={i} {...activity} index={i} />
-                  ))}
+                <div className="max-h-96 overflow-y-auto w-full">
+                  <table className="w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
+                    <thead className="text-xs text-muted-foreground bg-muted/50 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-3 font-medium rounded-tl-md">User / Action Initiator</th>
+                        <th className="px-6 py-3 font-medium">Type</th>
+                        <th className="px-6 py-3 font-medium">Interaction Details</th>
+                        <th className="px-6 py-3 font-medium text-right rounded-tr-md">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activities.map((activity, i) => {
+                        let badgeColorClass = "bg-primary/10 text-primary border-primary/20"; // default
+                        if (activity.type === 'Image Campaign' || activity.type === 'Template Campaign') {
+                           badgeColorClass = "bg-amber-500/10 text-amber-600 border-amber-500/20";
+                        } else if (activity.type === 'Message') {
+                           badgeColorClass = "bg-blue-500/10 text-blue-600 border-blue-500/20";
+                        } else if (activity.type === 'Chat Session') {
+                           badgeColorClass = "bg-green-500/10 text-green-600 border-green-500/20";
+                        }
+
+                        return (
+                        <motion.tr 
+                          key={i}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="border-b border-border hover:bg-muted/50 transition-colors"
+                        >
+                          <td className="px-6 py-4 font-medium text-foreground whitespace-nowrap">
+                            {activity.member}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeColorClass}`}>
+                              {activity.type || 'System Event'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-muted-foreground break-words min-w-[200px] max-w-[400px]">
+                            {activity.action}
+                          </td>
+                          <td className="px-6 py-4 text-muted-foreground text-right whitespace-nowrap">
+                            {activity.time}
+                          </td>
+                        </motion.tr>
+                      )})}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="p-8 text-center">

@@ -925,7 +925,7 @@ export default function FlowEditorModal({
         case "CheckboxGroup": return "Select All That Apply";
         case "DatePicker": return "Select Date";
         case "TextHeading": return "Heading";
-        case "TextBody": return "Body text here...";
+        case "TextBody": return "";
         default: return "New Component";
       }
     };
@@ -1703,21 +1703,6 @@ export default function FlowEditorModal({
                                         {String(comp.data.label)}
                                       </button>
                                     )}
-                                  </div>
-                                )}
-
-                                {/* Hover Actions */}
-                                {selectedComponentId === comp.id && (
-                                  <div className="absolute -right-2 -top-2 flex gap-1 bg-white dark:bg-zinc-800 shadow rounded-full p-1 border z-20">
-                                    <button
-                                      className="p-1 hover:text-red-500 text-muted-foreground"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        deleteComponent(comp.id);
-                                      }}
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
                                   </div>
                                 )}
                               </div>

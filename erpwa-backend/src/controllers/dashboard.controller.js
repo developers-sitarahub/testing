@@ -59,26 +59,138 @@ export const getDashboardStats = async (req, res) => {
         const convertedLeads = leadsStatusCount.find((s) => s.status === "converted")?._count.status || 0;
         const conversionRate = leadsCount > 0 ? Math.round((convertedLeads / leadsCount) * 100) : 0;
 
-        // Get recent lead activities (last 10) (filtered)
-        const recentLeadActivities = await prisma.lead.findMany({
-            where: leadFilter,
+        // 2. Get recent campaign activities
+        const recentCampaigns = await prisma.campaign.findMany({
+            where: {
+                vendorId,
+                ...(user.role === 'sales' ? { createdBy: user.id } : {}),
+            },
             select: {
                 id: true,
-                companyName: true,
+                name: true,
                 status: true,
-                salesPersonName: true,
-                updatedAt: true,
+                type: true,
+                createdAt: true,
+                createdBy: true,
+                totalMessages: true,
+                sentMessages: true,
+                failedMessages: true
             },
-            orderBy: { updatedAt: "desc" },
+            orderBy: { createdAt: "desc" },
             take: 10,
         });
 
-        // Format activities
-        const activities = recentLeadActivities.map((lead) => ({
-            id: lead.id,
-            member: lead.salesPersonName || "System",
-            action: `Updated lead: ${lead.companyName} - Status: ${lead.status}`,
-            time: formatTimeAgo(new Date(lead.updatedAt)),
+        const campaignUserIds = [...new Set(recentCampaigns.map(c => c.createdBy).filter(Boolean))];
+        const campaignUsers = await prisma.user.findMany({
+            where: { id: { in: campaignUserIds } },
+            select: { id: true, name: true }
+        });
+        const campaignUserMap = campaignUsers.reduce((acc, u) => {
+            acc[u.id] = u.name;
+            return acc;
+        }, {});
+
+        // 3. Get recent messages (templates or inbound)
+        const recentMessages = await prisma.message.findMany({
+            where: {
+                vendorId,
+                OR: [
+                    { direction: 'inbound' },
+                    { direction: 'outbound', messageType: 'template' }
+                ],
+                // If sales, filter to leads they own
+                ...(user.role === 'sales' ? {
+                    conversation: { lead: { salesPersonName: user.name } }
+                } : {}),
+            },
+            select: {
+                id: true,
+                direction: true,
+                messageType: true,
+                status: true,
+                createdAt: true,
+                sender: { select: { name: true } },
+                conversation: {
+                    select: {
+                        lead: { select: { companyName: true, phoneNumber: true } }
+                    }
+                }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 15,
+        });
+
+        // 4. Get active 24h sessions
+        const recentSessions = await prisma.conversation.findMany({
+            where: {
+                vendorId,
+                sessionStartedAt: { not: null },
+                sessionExpiresAt: { gt: new Date() },
+                ...(user.role === 'sales' ? {
+                    lead: { salesPersonName: user.name }
+                } : {})
+            },
+            select: {
+                id: true,
+                sessionStartedAt: true,
+                lead: { select: { companyName: true, phoneNumber: true } }
+            },
+            orderBy: { sessionStartedAt: "desc" },
+            take: 10,
+        });
+
+        // Merge and format activities
+        const events = [];
+
+        recentCampaigns.forEach((camp) => {
+            const campTypeStr = camp.type === 'TEMPLATE' ? 'Template Campaign' : 'Image Campaign';
+            const memberName = campaignUserMap[camp.createdBy] || "System";
+            
+            let displayStatus = camp.status;
+            // Infer correct status if DB still says active/processing
+            if (camp.totalMessages > 0) {
+                if (camp.failedMessages >= camp.totalMessages) {
+                    displayStatus = 'failed';
+                } else if ((camp.sentMessages + camp.failedMessages) >= camp.totalMessages) {
+                    displayStatus = 'completed';
+                } else if (camp.failedMessages > 0) {
+                    displayStatus = 'partially failed';
+                }
+            }
+
+            const actionText = `[Status: ${displayStatus}] ${campTypeStr}: ${camp.name || 'Unnamed'}`;
+            events.push({ member: memberName, type: campTypeStr, action: actionText, time: camp.createdAt });
+        });
+
+        recentMessages.forEach((msg) => {
+            if (msg.direction !== 'inbound') return; // Skip outbounds for this view
+            const leadName = msg.conversation?.lead?.companyName || msg.conversation?.lead?.phoneNumber || "unknown user";
+            let actionText = `Received an inbound message from ${leadName}`;
+            const memberName = leadName; // If inbound, the member initiating is the lead
+            
+            events.push({ member: memberName, type: "Message", action: actionText, time: msg.createdAt });
+        });
+
+        recentSessions.forEach((session) => {
+            const leadName = session.lead?.companyName || session.lead?.phoneNumber || "unknown user";
+            events.push({
+                member: "System",
+                type: "Chat Session",
+                action: `Ready for 24-hour window chat with ${leadName}`,
+                time: session.sessionStartedAt,
+            });
+        });
+
+        // Sort all events descending by time
+        events.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+        // Format final list (top 15)
+        const activities = events.slice(0, 15).map((act, index) => ({
+            id: `act_${index}_${new Date(act.time).getTime()}`,
+            member: act.member,
+            type: act.type || "System Event",
+            action: act.action,
+            time: formatTimeAgo(new Date(act.time)),
         }));
 
         // Prepare status breakdown
