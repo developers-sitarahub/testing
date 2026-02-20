@@ -644,14 +644,16 @@ export default function FlowTemplateModal({ isOpen, onClose, onSave, template, f
 
                                     {/* Add Button Options */}
                                     <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => addButton("FLOW")}
-                                            disabled={buttons.length >= 3}
-                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed border border-primary transition-all shadow-sm active:scale-95"
-                                        >
-                                            <Layers className="w-4 h-4" />
-                                            + Add Flow Button
-                                        </button>
+                                        {!buttons.some((b) => b.type === "FLOW") && (
+                                            <button
+                                                onClick={() => addButton("FLOW")}
+                                                disabled={buttons.length >= 3}
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed border border-primary transition-all shadow-sm active:scale-95"
+                                            >
+                                                <Layers className="w-4 h-4" />
+                                                + Add Flow Button
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -714,13 +714,16 @@ export const deleteFlow = async (req, res) => {
         // but locally we definitely want them gone.
         await deleteFlowTemplates(id, vendorId, accessToken, vendor.whatsappBusinessId);
 
-        // Delete from Meta
+        // Delete or Deprecate from Meta
         try {
-            await flowsService.deleteFlow(flow.metaFlowId, accessToken);
+            if (flow.status === 'PUBLISHED' || flow.status === 'DEPRECATED') {
+                await flowsService.deprecateFlow(flow.metaFlowId, accessToken);
+            } else {
+                await flowsService.deleteFlow(flow.metaFlowId, accessToken);
+            }
         } catch (error) {
-            console.warn('Warning: Failed to delete Flow from Meta, but will remove from database:', error.message);
+            console.warn('Warning: Failed to fully delete/deprecate Flow from Meta, but will remove from database:', error.message);
         }
-
         // Optional: Delete associate responses
         if (deleteResponses === 'true') {
             const deleteResCount = await prisma.flowResponse.deleteMany({

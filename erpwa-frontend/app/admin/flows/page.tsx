@@ -496,7 +496,7 @@ export default function FlowsPage() {
                     <div>
                         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
                             <Layers className="w-8 h-8 text-primary" />
-                            WhatsApp Flows
+                            WhatsApp Forms
                         </h1>
                         <p className="text-muted-foreground mt-1">
                             Create interactive forms and structured experiences
@@ -525,7 +525,7 @@ export default function FlowsPage() {
                                 className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors"
                             >
                                 <Plus className="w-5 h-5" />
-                                Create Flow
+                                Create Form
                             </button>
                         ) : (
                             <button
@@ -533,7 +533,7 @@ export default function FlowsPage() {
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                             >
                                 <Plus className="w-5 h-5" />
-                                Create Flow Template
+                                Create Form Template
                             </button>
                         )}
                     </div>
@@ -551,7 +551,7 @@ export default function FlowsPage() {
                         )}
                     >
                         <LayoutGrid className="w-4 h-4" />
-                        Flow Creation
+                        Form Creation
                         {activeTab === "flows" && (
                             <motion.div
                                 layoutId="activeFlowTab"
@@ -569,7 +569,7 @@ export default function FlowsPage() {
                         )}
                     >
                         <BookTemplate className="w-4 h-4" />
-                        Flow Template
+                        Form Template
                         {activeTab === "templates" && (
                             <motion.div
                                 layoutId="activeFlowTab"
@@ -590,7 +590,7 @@ export default function FlowsPage() {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <input
                                         type="text"
-                                        placeholder="Search flows..."
+                                        placeholder="Search forms..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
@@ -618,7 +618,7 @@ export default function FlowsPage() {
                         {loading && (
                             <div className="text-center py-12">
                                 <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-muted-foreground mt-2">Loading flows...</p>
+                                <p className="text-muted-foreground mt-2">Loading forms...</p>
                             </div>
                         )}
 
@@ -628,13 +628,13 @@ export default function FlowsPage() {
                                 <Layers className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold text-foreground mb-2">
                                     {searchTerm || statusFilter !== "all"
-                                        ? "No flows found"
-                                        : "No flows yet"}
+                                        ? "No forms found"
+                                        : "No forms yet"}
                                 </h3>
                                 <p className="text-muted-foreground mb-4">
                                     {searchTerm || statusFilter !== "all"
                                         ? "Try adjusting your filters"
-                                        : "Create your first Flow to get started"}
+                                        : "Create your first form to get started"}
                                 </p>
                                 {!searchTerm && statusFilter === "all" && (
                                     <button
@@ -642,7 +642,7 @@ export default function FlowsPage() {
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium"
                                     >
                                         <Plus className="w-5 h-5" />
-                                        Create First Flow
+                                        Create First Form
                                     </button>
                                 )}
                             </div>
@@ -720,18 +720,10 @@ export default function FlowsPage() {
                                                         <button
                                                             onClick={() => handleEditFlow(flow)}
                                                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-lg text-sm font-medium transition-colors shadow-sm"
-                                                            title="View flow structure"
+                                                            title="View form structure"
                                                         >
                                                             <Eye className="w-4 h-4" />
                                                             View
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleEditFlow(flow)}
-                                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors shadow-sm"
-                                                            title="Edit will convert to Draft"
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                            Edit
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -747,26 +739,14 @@ export default function FlowsPage() {
 
                                                 {/* Secondary Actions */}
                                                 <div className="flex items-center gap-1 border-l border-border pl-3">
-                                                    {flow.status === "PUBLISHED" && (
-                                                        <button
-                                                            onClick={() => handleDeprecateFlow(flow.id)}
-                                                            className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/20 text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 rounded-md transition-colors"
-                                                            title="Deprecate Flow"
-                                                        >
-                                                            <Archive className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-
-                                                    {/* Delete - Only for non-published flows (Meta doesn't allow deleting published flows) */}
-                                                    {flow.status !== "PUBLISHED" && (
-                                                        <button
-                                                            onClick={() => handleDeleteFlow(flow)}
-                                                            className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 rounded-md transition-colors"
-                                                            title="Delete Flow"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    )}
+                                                    {/* Delete - Enabled for all statuses */}
+                                                    <button
+                                                        onClick={() => handleDeleteFlow(flow)}
+                                                        className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 rounded-md transition-colors"
+                                                        title="Delete Form"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </div>
                                             </div>
                                         </motion.div>

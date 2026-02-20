@@ -25,6 +25,7 @@ interface FlowEditorModalProps {
     category: string;
     flowJson: Record<string, unknown>;
     validationErrors?: unknown[];
+    status?: string;
   } | null;
   onSave: () => void;
 }
@@ -1119,7 +1120,7 @@ export default function FlowEditorModal({
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Workflow className="w-5 h-5 text-primary" />
-                {flow ? "Edit Flow" : "Create New Flow"}
+                {flow?.status === "PUBLISHED" || flow?.status === "DEPRECATED" ? "View Form" : flow ? "Edit Form" : "Create New Form"}
               </h2>
               <div className="flex items-center gap-2">
 
@@ -1133,11 +1134,12 @@ export default function FlowEditorModal({
               <div>
                 <label className="block text-sm font-semibold mb-1">Name</label>
                 <input
-                  className="w-full px-3 py-2 bg-background border rounded-lg"
+                  className="w-full px-3 py-2 bg-background border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
+                  disabled={flow?.status === "PUBLISHED" || flow?.status === "DEPRECATED"}
                 />
               </div>
               <div>
@@ -1145,11 +1147,12 @@ export default function FlowEditorModal({
                   Category
                 </label>
                 <select
-                  className="w-full px-3 py-2 bg-background border rounded-lg"
+                  className="w-full px-3 py-2 bg-background border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   value={formData.category}
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
+                  disabled={flow?.status === "PUBLISHED" || flow?.status === "DEPRECATED"}
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -2117,25 +2120,27 @@ export default function FlowEditorModal({
             {/* MODAL FOOTER */}
             <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/20">
               <Button variant="outline" onClick={onClose}>
-                Cancel
+                {flow?.status === "PUBLISHED" || flow?.status === "DEPRECATED" ? "Close" : "Cancel"}
               </Button>
-              <Button
-                onClick={() => {
-                  // Always use builder to generate JSON
-                  const jsonToUse = generateJSONFromScreens();
-                  handleSave(jsonToUse);
-                }}
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    {flow ? "Updating..." : "Creating..."}
-                  </>
-                ) : (
-                  flow ? "Update Flow" : "Create Flow"
-                )}
-              </Button>
+              {!(flow?.status === "PUBLISHED" || flow?.status === "DEPRECATED") && (
+                <Button
+                  onClick={() => {
+                    // Always use builder to generate JSON
+                    const jsonToUse = generateJSONFromScreens();
+                    handleSave(jsonToUse);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      {flow ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    flow ? "Update Form" : "Create Form"
+                  )}
+                </Button>
+              )}
             </div>
           </motion.div >
         </div >

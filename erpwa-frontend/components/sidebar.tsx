@@ -27,7 +27,7 @@ const menuItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/inbox", icon: MessageSquare, label: "Inbox" },
   { href: "/templates", icon: FileText, label: "Templates" },
-  { href: "/flows", icon: Layers, label: "Flows" },
+  { href: "/flows", icon: Layers, label: "Forms" },
   { href: "/campaigns", icon: Megaphone, label: "Campaigns" },
   { href: "/categories", icon: Folder, label: "Categories" },
   { href: "/gallery", icon: ImageIcon, label: "Gallery" },

@@ -33,7 +33,7 @@ const menuItems = [
   { href: "/admin/inbox", icon: MessageSquare, label: "Inbox" },
   { href: "/admin/chatbot", icon: BotMessageSquare, label: "Chatbot" },
   { href: "/admin/templates", icon: FileText, label: "Templates" },
-  { href: "/admin/flows", icon: Layers, label: "Flows" },
+  { href: "/admin/flows", icon: Layers, label: "Forms" },
   { href: "/admin/campaigns", icon: Megaphone, label: "Campaigns" },
   { href: "/admin/leads", icon: Database, label: "Leads" },
   { href: "/admin/categories", icon: Folder, label: "Categories" },

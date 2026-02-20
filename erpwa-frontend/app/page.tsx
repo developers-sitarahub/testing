@@ -23,6 +23,8 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+
+  const dashboardPath = user && (user.role === "vendor_owner" || user.role === "vendor_admin") ? "/admin/dashboard" : "/dashboard";
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 1.05]);
   const heroY = useTransform(scrollYProgress, [0, 0.2], [0, 50]);
 
@@ -54,7 +56,7 @@ export default function LandingPage() {
             {loading ? (
               <div className="h-10 w-28 bg-white/5 animate-pulse rounded-full" />
             ) : user ? (
-              <Link href="/dashboard">
+              <Link href={dashboardPath}>
                 <button className="group px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-sm font-medium flex items-center gap-2 cursor-pointer backdrop-blur-sm">
                   Dashboard
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -134,7 +136,7 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link href={user ? "/dashboard" : "/login"}>
+            <Link href={user ? dashboardPath : "/login"}>
               <button className="h-14 px-8 rounded-full bg-white text-slate-950 font-bold text-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
                 Start for free <Zap className="w-5 h-5 fill-slate-950" />
               </button>

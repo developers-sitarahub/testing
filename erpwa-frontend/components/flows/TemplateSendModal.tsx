@@ -148,14 +148,25 @@ export default function TemplateSendModal({ isOpen, onClose, template }: Props) 
             const res = await api.post("/vendor/whatsapp/template/send-template", payload);
 
             const results = res.data.results || [];
-            const failed = results.filter((r: { success: boolean }) => !r.success);
+            const failed = results.filter((r: { success: boolean, error?: { error_user_msg?: string; error_user_title?: string; message?: string } | string }) => !r.success);
 
             if (failed.length > 0) {
-                const firstError = failed[0].error?.message || "Unknown error";
+                const errObj = failed[0].error;
+                let firstError = "Unknown error";
+                
+                if (typeof errObj === "string") {
+                    firstError = errObj;
+                } else if (errObj) {
+                    firstError = errObj.error_user_msg || errObj.message || "Unknown error";
+                    if (errObj.error_user_title) {
+                        firstError = `${errObj.error_user_title}: ${firstError}`;
+                    }
+                }
+
                 if (failed.length === results.length) {
                     toast.error(`Failed to send: ${firstError}`);
                 } else {
-                    toast.warning(`${results.length - failed.length} sent, ${failed.length} failed.`);
+                    toast.warning(`${results.length - failed.length} sent, ${failed.length} failed. (${firstError})`);
                 }
             } else {
                 toast.success("Messages sent successfully!");
