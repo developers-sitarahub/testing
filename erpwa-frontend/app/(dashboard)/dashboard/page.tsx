@@ -77,11 +77,17 @@ function KPICard({ title, value, change, trend, icon, description, index, color 
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<any>(null)
-  const [activities, setActivities] = useState<any[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [stats, setStats] = useState<Record<string, any>| null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activities, setActivities] = useState<Record<string, any>[]>([])
 
   useEffect(() => {
     fetchDashboardData()
+
+    // Auto-refresh every 10 seconds for real-time updates
+    const interval = setInterval(() => fetchDashboardData(), 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const fetchDashboardData = async () => {
@@ -89,7 +95,7 @@ export default function AdminDashboard() {
       const response = await dashboardAPI.getStats()
       setStats(response.data.stats)
       setActivities(response.data.recentActivities || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to fetch dashboard data:", error)
       toast.error("Failed to load dashboard data")
     } finally {
@@ -194,7 +200,7 @@ export default function AdminDashboard() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Welcome back! Here's an overview of your business
+            Welcome back! Here&apos;s an overview of your business
           </p>
         </motion.div>
 
@@ -219,7 +225,9 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {Object.entries(stats.statusBreakdown).map(([status, count]: [string, any], index) => {
+                  {(Object.entries(stats.statusBreakdown) as [string, number][])
+                    .filter(([, count]) => count > 0)
+                    .map(([status, count], index) => {
                     const config = statusConfig[status] || statusConfig.new
                     return (
                       <motion.div
@@ -252,7 +260,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Empty state if no leads */}
-                {Object.keys(stats.statusBreakdown).length === 0 && (
+                {(Object.keys(stats.statusBreakdown).length === 0 || (Object.values(stats.statusBreakdown) as number[]).every(count => count === 0)) && (
                   <div className="text-center py-12">
                     <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-muted-foreground">No leads yet. Start by adding your first lead!</p>
@@ -274,25 +282,38 @@ export default function AdminDashboard() {
               {activities.length > 0 ? (
                 <div className="max-h-96 overflow-y-auto w-full">
                   <table className="w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
-                    <thead className="text-xs text-muted-foreground bg-muted/50 sticky top-0 z-10">
+                    <thead className="text-[10px] uppercase tracking-widest text-muted-foreground/80 bg-muted/30 backdrop-blur-md sticky top-0 z-10 border-b border-border/50">
                       <tr>
-                        <th className="px-6 py-3 font-medium rounded-tl-md">User / Action Initiator</th>
-                        <th className="px-6 py-3 font-medium">Type</th>
-                        <th className="px-6 py-3 font-medium">Interaction Details</th>
-                        <th className="px-6 py-3 font-medium">Delivery Stats</th>
-                        <th className="px-6 py-3 font-medium text-right rounded-tr-md">Time</th>
+                        <th className="px-6 py-4 font-bold text-left w-[20%]">Initiator</th>
+                        <th className="px-6 py-4 font-bold text-left w-[15%]">Category</th>
+                        <th className="px-6 py-4 font-bold text-left w-[35%]">Activity Details</th>
+                        <th className="px-6 py-4 font-bold text-left w-[15%]">Performance</th>
+                        <th className="px-6 py-4 font-bold text-right w-[15%]">Time</th>
                       </tr>
                     </thead>
                     <tbody>
                       {activities.map((activity, i) => {
-                        let badgeColorClass = "bg-primary/10 text-primary border-primary/20"; // default
-                        if (activity.type === 'Image Campaign' || activity.type === 'Template Campaign') {
+                        let badgeColorClass = "bg-primary/10 text-primary border-primary/20"; 
+                        let Icon = Activity;
+
+                        if (activity.type === 'Image Campaign' || activity.type === 'Template Campaign' || activity.type === 'Campaign') {
                            badgeColorClass = "bg-amber-500/10 text-amber-600 border-amber-500/20";
-                        } else if (activity.type === 'Message') {
+                           Icon = TrendingUp;
+                        } else if (activity.type.toLowerCase().includes('lead')) {
+                           badgeColorClass = "bg-purple-500/10 text-purple-600 border-purple-500/20";
+                           Icon = UserCheck;
+                        } else if (activity.type.toLowerCase().includes('message')) {
                            badgeColorClass = "bg-blue-500/10 text-blue-600 border-blue-500/20";
-                        } else if (activity.type === 'Chat Session') {
-                           badgeColorClass = "bg-green-500/10 text-green-600 border-green-500/20";
+                           Icon = MessageSquare;
+                        } else if (activity.type.toLowerCase().includes('template')) {
+                           badgeColorClass = "bg-cyan-500/10 text-cyan-600 border-cyan-500/20";
+                           Icon = FileText;
                         }
+
+                        // Calculate success rate for campaigns
+                        const successRate = activity.stats?.total > 0 
+                          ? Math.round((activity.stats.sent / activity.stats.total) * 100) 
+                          : 0;
 
                         return (
                         <motion.tr 
@@ -300,31 +321,60 @@ export default function AdminDashboard() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          className="border-b border-border hover:bg-muted/50 transition-colors"
+                          className="border-b border-border hover:bg-muted/40 transition-colors group"
                         >
-                          <td className="px-6 py-4 font-medium text-foreground whitespace-nowrap">
-                            {activity.member}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-1.5 rounded-lg ${badgeColorClass.split(' ')[0]}`}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <span className="font-semibold text-foreground truncate max-w-40">
+                                {activity.member}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeColorClass}`}>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider ${badgeColorClass}`}>
                               {activity.type || 'System Event'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-muted-foreground break-words min-w-[200px] max-w-[400px]">
-                            {activity.action}
+                          <td className="px-6 py-4 align-top">
+                            <div className="flex flex-col gap-1.5">
+                              <div className="text-[10px] font-extrabold uppercase tracking-widest text-primary/70 leading-none">
+                                {activity.action.split(': ')[0] || 'Activity'}
+                              </div>
+                              <div className="text-sm font-semibold text-foreground leading-tight max-w-75 wrap-break-word">
+                                {activity.action.split(': ')[1] || activity.action}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             {activity.stats ? (
-                              <div className="flex flex-col gap-1 text-xs">
-                                <span className="text-green-600 font-medium">Sent: {activity.stats.sent}</span>
-                                <span className="text-red-500 font-medium">Failed: {activity.stats.failed}</span>
-                                <span className="text-muted-foreground font-medium">Total: {activity.stats.total}</span>
+                              <div className="flex flex-col gap-2 min-w-36">
+                                <div className="flex items-center justify-between text-[11px] font-bold">
+                                  <span className="text-green-600">S: {activity.stats.sent}</span>
+                                  <span className="text-red-500">F: {activity.stats.failed}</span>
+                                  <span className="text-muted-foreground">T: {activity.stats.total}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex">
+                                   <div 
+                                     className="h-full bg-green-500 transition-all duration-500" 
+                                     style={{ width: `${successRate}%` }} 
+                                   />
+                                   <div 
+                                     className="h-full bg-red-500 transition-all duration-500" 
+                                     style={{ width: `${activity.stats.total > 0 ? (activity.stats.failed / activity.stats.total) * 100 : 0}%` }} 
+                                   />
+                                </div>
                               </div>
                             ) : (
-                              <span className="text-muted-foreground text-xs">-</span>
+                              <div className="flex items-center gap-2 text-muted-foreground italic text-xs">
+                                <Activity className="w-3 h-3" />
+                                <span>Event Logged</span>
+                              </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-muted-foreground text-right whitespace-nowrap">
+                          <td className="px-6 py-4 text-muted-foreground text-right whitespace-nowrap text-xs font-medium">
                             {activity.time}
                           </td>
                         </motion.tr>
@@ -333,10 +383,10 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               ) : (
-                <div className="p-8 text-center">
-                  <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No recent activity</p>
-                  <p className="text-sm text-muted-foreground mt-2">Activity will appear here as you work with leads</p>
+                <div className="p-12 text-center">
+                  <Activity className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4 animate-pulse" />
+                  <p className="text-lg font-semibold text-foreground">No recent activity</p>
+                  <p className="text-sm text-muted-foreground mt-1">Activities will appear here as you interact with leads</p>
                 </div>
               )}
             </CardContent>
