@@ -352,9 +352,9 @@ export default function AdminDashboard() {
                             {activity.stats ? (
                               <div className="flex flex-col gap-2 min-w-36">
                                 <div className="flex items-center justify-between text-[11px] font-bold">
-                                  <span className="text-green-600">S: {activity.stats.sent}</span>
-                                  <span className="text-red-500">F: {activity.stats.failed}</span>
-                                  <span className="text-muted-foreground">T: {activity.stats.total}</span>
+                                  <span className="text-green-600 relative group/s">S: {activity.stats.sent}<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[10px] bg-foreground text-background rounded opacity-0 group-hover/s:opacity-100 transition-opacity duration-100 pointer-events-none whitespace-nowrap">Success</span></span>
+                                  <span className="text-red-500 relative group/f">F: {activity.stats.failed}<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[10px] bg-foreground text-background rounded opacity-0 group-hover/f:opacity-100 transition-opacity duration-100 pointer-events-none whitespace-nowrap">Failed</span></span>
+                                  <span className="text-muted-foreground relative group/t">T: {activity.stats.total}<span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[10px] bg-foreground text-background rounded opacity-0 group-hover/t:opacity-100 transition-opacity duration-100 pointer-events-none whitespace-nowrap">Total</span></span>
                                 </div>
                                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex">
                                    <div 
