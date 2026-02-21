@@ -26,6 +26,8 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+
+  const dashboardPath = user && (user.role === "vendor_owner" || user.role === "vendor_admin") ? "/admin/dashboard" : "/dashboard";
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 1.05]);
   const heroY = useTransform(scrollYProgress, [0, 0.2], [0, 50]);
 
