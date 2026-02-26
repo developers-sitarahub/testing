@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { generateOtp, hashOtp } from '../utils/otp.js';
 import { sendMail } from '../utils/mailer.js';
 import { passwordResetOtpTemplate } from '../emails/passwordResetOtp.template.js';
-import { vendorActivatedWithPasswordTemplate } from '../emails/vendorActivatedWithPassword.template.js';
 import crypto from 'crypto';
 
 /* ============================================================
@@ -123,9 +122,9 @@ export async function activateVendor(req, res) {
       return res.status(404).json({ message: 'Vendor owner not found' });
     }
 
-    // Generate an 8-character alphanumeric password
-    const plainPassword = crypto.randomBytes(4).toString('hex');
-    const passwordHash = await hashPassword(plainPassword);
+    // Generate a random temporary password (user won't use this directly)
+    const tempPassword = crypto.randomBytes(32).toString('hex');
+    const passwordHash = await hashPassword(tempPassword);
 
     // Set onboardingStatus to 'activated' and assign the new password
     await prisma.user.update({
@@ -148,25 +147,57 @@ export async function activateVendor(req, res) {
       },
     });
 
-    // Send activation email with generated credentials to the vendor owner
+    // Generate invite token for the link (1 hour validity)
+    const inviteToken = jwt.sign(
+      { sub: owner.id, type: "invite", email: owner.email },
+      process.env.PASSWORD_RESET_TOKEN_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const inviteLink = `${process.env.FRONTEND_URL}/create-password?token=${inviteToken}`;
+    const name = owner.name || 'Vendor Owner';
+
+    // Send invite email WITHOUT OTP (user will request OTP from the page)
     if (owner.email) {
       try {
         await sendMail({
-          to: owner.email,
-          ...vendorActivatedWithPasswordTemplate({ 
-            name: owner.name || 'Vendor',
-            email: owner.email,
-            password: plainPassword
-          }),
+            to: owner.email,
+            subject: "Welcome to WhatsApp ERP - Set Up Your Account",
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #2563EB;">Welcome to the Team, ${name}!</h2>
+                    <p>Your account has been created successfully.</p>
+                    <p>To activate your account and set your password, click the button below:</p>
+
+                    <div style="margin: 30px 0; text-align: center;">
+                        <a href="${inviteLink}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Set Up Your Password</a>
+                    </div>
+
+                    <p style="font-size: 14px; color: #666;">Or copy this link to your browser:</p>
+                    <p style="font-size: 14px; color: #666; word-break: break-all;">${inviteLink}</p>
+                    
+                    <p style="margin-top: 30px; padding-top: 20px; font-size: 13px; color: #666;">
+                        <strong>Next steps:</strong><br>
+                        1. Click the link above<br>
+                        2. Request a verification code<br>
+                        3. Enter the code from your email<br>
+                        4. Set your password
+                    </p>
+                    
+                    <p style="border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999;">
+                        <strong style="color: #dc2626;">⚠️ This link is valid for 1 hour and can be used only once.</strong>
+                    </p>
+                </div>
+            `
         });
-        console.log(`[EMAIL SUCCESS] Sent activation email & password to ${owner.email}`);
+        console.log(`[EMAIL SUCCESS] Sent activation invite email to ${owner.email}`);
       } catch (err) {
         console.error(`[EMAIL FAILED] Failed to send activation email to ${owner.email}:`, err);
         // We don't throw here to avoid preventing the activation itself if email fails
       }
     }
 
-    return res.json({ message: 'Vendor activated successfully and password sent via email.' });
+    return res.json({ message: 'Vendor activated successfully and invite link sent via email.' });
   } catch (err) {
     console.error('activateVendor error:', err);
     return res.status(500).json({ message: 'Internal server error' });
