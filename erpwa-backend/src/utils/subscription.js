@@ -110,3 +110,48 @@ export async function enforceTeamUsersLimit(vendorId) {
 
     return true;
 }
+
+/**
+ * Validates if a vendor can create another chatbot/workflow.
+ * Throws an Error if the limit is exceeded.
+ */
+export async function enforceChatbotLimit(vendorId) {
+    const vendor = await prisma.vendor.findUnique({
+        where: { id: vendorId },
+        include: { subscriptionPlan: true },
+    });
+
+    if (!vendor) {
+        throw new Error("Vendor not found.");
+    }
+
+    if (!vendor.subscriptionPlan) {
+        throw new Error("No subscription plan assigned. Please contact support to activate your plan.");
+    }
+
+    const { chatbotLimit, name } = vendor.subscriptionPlan;
+
+    if (chatbotLimit === -1) return true; // Unlimited
+
+    const count = await prisma.workflow.count({
+        where: { vendorId }
+    });
+
+    if (count >= chatbotLimit) {
+        throw new Error(`Subscription limit reached. Your ${name} plan allows up to ${chatbotLimit} chatbot workflows.`);
+    }
+
+    return true;
+}
+
+/**
+ * Check if chatbot limit is reached (returns boolean instead of throwing).
+ */
+export async function hasChatbotLimitReached(vendorId) {
+    try {
+        await enforceChatbotLimit(vendorId);
+        return false;
+    } catch (error) {
+        return true;
+    }
+}
